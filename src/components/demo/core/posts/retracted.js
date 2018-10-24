@@ -23,7 +23,7 @@ class RetractedPost extends Component {
 				<div className="post-taxonomy owned-taxonomy">retraction</div>
 				<PostCore post={this.props.retraction} />
 				<div className="retraction-spacer"></div>
-				<PostCore post={this.props.post} />
+				{this.props.children}
 			</div>
 		);
 

@@ -147,7 +147,13 @@ class Core extends Component {
 			// Otherwise, show the post feed
 			default:
 				content = <Feed
+
+					users={this.props.data.users}
 					posts={this.props.data.posts}
+
+					sendPost={this.props.sendPost}
+					getPost={this.props.getPost}
+
 				/>;
 
 		}

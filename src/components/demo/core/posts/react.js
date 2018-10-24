@@ -1,8 +1,6 @@
 import React, { Component } from 'react';
 import '../../../../App.css';
 
-import PostCore from './postcore';
-
 
 
 
@@ -26,7 +24,7 @@ class ReactPost extends Component {
 		return (
 			<div className="react-post">
 				<div className="post-taxonomy react-taxonomy">react</div>
-				<PostCore post={this.props.post} />
+				{this.props.children}
 				<div className="react-buttons">
 					<button
 						className="react-button react-support"

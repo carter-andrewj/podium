@@ -1,8 +1,6 @@
 import React, { Component } from 'react';
 import '../../../../App.css';
 
-import PostCore from './postcore';
-
 
 
 
@@ -21,7 +19,7 @@ class ReportPost extends Component {
 		return (
 			<div className="report-post">
 				<div className="post-taxonomy report-taxonomy">reported</div>
-				<PostCore post={this.props.post} />
+				{this.props.children}
 			</div>
 		);
 

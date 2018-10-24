@@ -430,7 +430,9 @@ input:focus {
 
 
 .card {
-	box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+	box-shadow:
+		0 0 0.5em 0 rgba(0, 0, 0, 0.1),
+		0 0.2em 0.4em 0 rgba(0, 0, 0, 0.2);
 }
 
 .menu {
@@ -600,8 +602,9 @@ input:focus {
 }
 
 .send-box {
-	padding: 1%;
-	border-radius: 0 0 2.0em 0;
+	margin-top: 1em;
+	padding: 0.6em 0.4em 0.5em;
+	border-radius: 0 0 2.3em 0;
 }
 
 .input-col {
@@ -610,86 +613,93 @@ input:focus {
 
 .post-input {
 	width: 95%;
-	height: 2.4em;
-	margin: 0 2.5%;
+	min-height: 2.4em;
+	max-height: none;
+	margin: auto;
 	resize: none;
 	border: 2px solid var(--green);
+	border-radius: 0 0 1.8em 0;
 	padding: 0.4em;
 	font-size: 100%;
 	line-height: 1.4em;
 	font-weight: 400;
 	text-align: left;
+	overflow: auto;
 	white-space: pre-wrap;
 }
 
 .post-input:focus {
 	outline: none;
 	min-height: 4.8em;
+	border-radius: 0;
 }
 
-.post-placeholder {
+.post-input-placeholder {
 	opacity: 1;
 	color: var(--grey);
 }
 
-.send-col {
-	position: relative;
-}
-
-.post-button {
+.post-input-button {
 	display: block;
 	float: right;
 	margin-top: 0;
-	margin-right: 2.5%;
-	width: 14%;
+	margin-right: 1em;
+	width: 6em;
 	min-width: 0;
-	min-height: 27.5%;
-	border-radius: 0 0 1.7em 1.7em;
+	border-radius: 0 0 2.4em 2.4em;
 	border-top: 0;
 	padding: 0;
-	padding-bottom: 1em;
+	padding-bottom: 0.2em;
 	line-height: 1.4em;
-	font-size: 100%;
-	white-space: pre-wrap;
-	word-break: keep-all;
 }
 
-.post-cost {
+.post-input-cost {
 	position: absolute;
-	bottom: 25%;
+	bottom: 2.3em;
 	margin: 0;
-	right: 4%;
+	right: 2em;
 	font-size: 80%;
 }
 
-.post-line {
+.post-input-cost-icon {
+	padding-bottom: 0.1em;
+}
+
+.post-input-line {
 	margin: 0;
 	line-height: 1.35em;
 }
 
-.post-mention {
+.post-input-item {
+	padding-bottom: 0.2em;
+}
+
+.post-input-mention {
 	color: var(--green);
 }
 
-.post-mention:hover {
-	font-weight: 700;
-}
-
-.post-topic {
-	color: var(--red);
-}
-
-.post-topic:hover {
-	font-weight: 700;
-}
-
-.post-link {
-	color: var(--blue);
-	font-weight: 700;
-}
-
-.post-link:hover {
+.post-input-mention:hover {
 	text-decoration: underline;
+}
+
+.post-input-topic {
+	color: var(--tan);
+}
+
+.post-input-topic:hover {
+	text-decoration: underline;
+}
+
+.post-input-link {
+	color: var(--blue);
+}
+
+.post-input-link:hover {
+	text-decoration: underline;
+}
+
+.send-col {
+	position: relative;
 }
 
 
@@ -714,16 +724,27 @@ input:focus {
 
 .post-taxonomy {
 	position: absolute;
-	left: -10%;
-	transform: rotate(-90deg) translate(-50%, 0);
-	border-bottom: 2px solid;
+	left: -0.7em;
+	top: 2.2em;
+	bottom: 0.2em;
+	border-right: 2px solid;
+	padding-right: 0.4em;
+}
+
+.taxonomy-holder {
+	width: 0;
+	height: 100%;
+	transform: rotate(-90deg) translate(0, 0.25em);
+}
+
+.taxonomy-text {
 	font-size: 80%;
 	text-align: center;
 }
 
 .follower-taxonomy {
-	color: blue;
-	border-color: blue;
+	color: var(--blue);
+	border-color: var(--blue);
 }
 
 .post-middle {
@@ -732,18 +753,53 @@ input:focus {
 }
 
 .post-username {
-	text-align: left;
 	margin: 0;
+	text-align: left;
+	font-size: 110%;
+	font-family: var(--titles);
 	font-weight: bold;
+	color: var(--green);
 }
 
 .post-content {
 	text-align: justify;
 	margin: 0;
 	padding-left: 0.5em;
+	padding-bottom: 0.8em;
 	font-weight: normal;
-	font-size: 90%;
-	line-height: 1.2em;
+}
+
+.post-line {
+	margin: 0;
+	line-height: 1.4em;
+}
+
+.post-mention {
+	color: var(--green);
+	cursor: pointer;
+}
+
+.post-mention:hover {
+	text-decoration: underline;
+}
+
+.post-topic {
+	color: var(--tan);
+	cursor: pointer;
+}
+
+.post-topic:hover {
+	text-decoration: underline;
+}
+
+.post-topic > a {
+	color: var(--blue);
+	cursor: pointer;
+	text-decoration: none;
+}
+
+.post-topic > a:hover {
+	text-decoration: underline;
 }
 
 
@@ -952,9 +1008,10 @@ input:focus {
 
 .task-progbar {
 	position: absolute;
-	height: 0;
+	height: 0.2em;
 	bottom: 0.2em;
-	padding-top: 0.2em;
+	border: 0.12em solid transparent;
+	border-radius: 0.12em;
 	margin-left: 1%;
 	max-width: 98%;
 }
@@ -981,6 +1038,7 @@ input:focus {
 .task-spinner {
 	color: var(--grey);
 	margin-left: 0.3em;
+	margin-bottom: 0.2em;
 	font-size: 1em;
 	top: 0.2em;
 	padding: 0;

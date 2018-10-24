@@ -26,7 +26,7 @@ class ReplyPost extends Component {
 				<div className="reply-history"></div>
 				<Post post={this.props.post.parent} />
 				<div className="reply-spacer"></div>
-				<Post post={this.props.post} />
+				{this.props.children}
 			</div>
 		);
 

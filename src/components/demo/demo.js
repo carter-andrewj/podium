@@ -56,11 +56,11 @@ class Demo extends Component {
 		super()
 		this.state = {
 
-			mode: "core",
+			mode: "lobby",
 			settings: Settings,
 
 			podium: {},
-			user: emptyUser,
+			user: {},
 			data: emptyData,
 
 			tasks: {},
@@ -85,6 +85,7 @@ class Demo extends Component {
 		this.endTask = this.endTask.bind(this);
 		this.failTask = this.failTask.bind(this);
 
+		this.sendRecord = this.sendRecord.bind(this);
 		this.getHistory = this.getHistory.bind(this);
 		this.getLatest = this.getLatest.bind(this);
 		this.openChannel = this.openChannel.bind(this);
@@ -106,7 +107,14 @@ class Demo extends Component {
 		this.followUser = this.followUser.bind(this);
 		this.unfollowUser = this.unfollowUser.bind(this);
 
-		// this.sendPost = this.sendPost.bind(this);
+		this.createTopic = this.createTopic.bind(this);
+		this.getTopicIndex = this.getTopicIndex.bind(this);
+		this.getTopic = this.getTopic.bind(this);
+		this.getTopicByID = this.getTopicById.bind(this);
+		this.deleteTopic = this.deleteTopic.bind(this);
+
+		this.sendPost = this.sendPost.bind(this);
+		this.getPost = this.getPost.bind(this);
 
 	}
 
@@ -272,6 +280,37 @@ class Demo extends Component {
 
 // RADIX UTILITIES
 
+	sendRecord(accounts, payload, taskID, encrypt=false) {
+		return new Promise((resolve) => {
+			if (accounts.length === 0) {
+				resolve();
+			} else {
+				RadixTransactionBuilder
+					.createPayloadAtom(
+						accounts,
+						this.state.podium.id,
+						JSON.stringify(payload),
+						encrypt
+					)
+					.signAndSubmit(this.state.user.identity)
+					.subscribe({
+						next: async status => {
+							await this.stepTask(taskID);
+						},
+						error: error => {
+							this.failTask(taskID, error);
+							resolve(error);
+						},
+						complete: async () => {
+							await this.stepTask(taskID);
+							resolve();
+						}
+					});
+			}
+		});
+	}
+
+
 	async getHistory(account, lifetime=5) {
 
 		// Pulls all current values from a radix
@@ -279,7 +318,6 @@ class Demo extends Component {
 
 		// Open the account connection
 		account.openNodeConnection();
-		console.log(account);
 
 		// Connect to account data
 		const stream = account.dataSystem
@@ -288,19 +326,19 @@ class Demo extends Component {
 
 		// Fetch the data
 		return new Promise((resolve) => {
+			const history = [];
 			const channel = stream
 				.subscribe({
-					next: history => {
-						channel.unsubscribe();
-						if (!history) {
-							resolve([]);
+					//TODO - Rewrite to pull until up-to-date once
+					//		 radix provides the required flag.
+					//		 Currently, this just collates all
+					//		 input until timeout.
+					next: item => {
+						if (!item) {
+							channel.unsubscribe();
+							resolve(history);
 						} else {
-							const result = JSON.parse(history.data.payload)
-							if (result.constructor === Array) {
-								resolve(result);
-							} else {
-								resolve([result]);
-							}
+							history.push(JSON.parse(item.data.payload));
 						}
 					},
 					error: error => {
@@ -606,7 +644,6 @@ class Demo extends Component {
 						const profile = new Promise((resolve) => {
 							this.getProfile(address)
 								.then(profile => {
-									console.log("GOT PROFILE");
 									this.stepTask("signin");
 									resolve(true);
 								});
@@ -668,7 +705,6 @@ class Demo extends Component {
 								.then(async followingHistory => {
 
 									// Unpack users currently being followed
-									console.log("GOT FOLLOWING", followingHistory);
 									followingHistory.forEach(follow => {
 
 										// Store follower record
@@ -713,9 +749,6 @@ class Demo extends Component {
 						// Wait for tasks to complete
 						Promise.all([profile, posts, alerts, following, followers])
 							.then((results) => {
-
-								console.log(this.state)
-
 								//TODO - Catch errors above and return into
 								//		 the -results- before handling here.
 								this.completeTask("signin");
@@ -746,7 +779,7 @@ class Demo extends Component {
 	receivePost(post) {
 		console.log("New Post:", post);
 		var state = this.state;
-		state.user.stats.posts += 1;
+		state.user.posts += 1;
 		state.data.posts[post.address] = post;
 		this.setState(state);
 	}
@@ -763,7 +796,8 @@ class Demo extends Component {
 
 	receiveFollowing(following) {
 		//TODO - Validate relation record for this follower record
-		console.log("Now Following:", following);
+
+		// Add record to state
 		var state = this.state;
 		state.user.following += 1;
 		state.data.following[following.address] = following;
@@ -773,6 +807,13 @@ class Demo extends Component {
 			}
 		}
 		this.setState(state);
+
+		// Subscribe for posts from this user
+		this.openChannel(
+			Channel.forPostsBy(following.address),
+			this.receivePost
+		);
+
 	}
 
 
@@ -798,6 +839,12 @@ class Demo extends Component {
 	async getProfile(address, store=true) {
 		return new Promise((resolve) => {
 
+			// Check if profile has already been stored
+			if (address in this.state.data.users &&
+					"id" in this.state.data.users[address]) {
+				resolve(this.state.data.users[address]);
+			}
+
 			// Retrieve the latest profile information for the
 			// provided address
 			this.getLatest(Channel.forProfileOf(address))
@@ -808,7 +855,7 @@ class Demo extends Component {
 					if (store) {
 						const state = this.state;
 						state.data.users[address] = profile;
-						this.setState(state, resolve);
+						this.setState(state, () => { resolve(profile); });
 					} else {
 						resolve(profile);
 					}
@@ -823,10 +870,235 @@ class Demo extends Component {
 
 // POSTING
 
+	async sendPost(post, cost) {
 
+		// Packages and stores a new post. Each post is stored
+		// in one location, created from the posting user's
+		// address and the number of posts they have sent.
+		// That address is then indexed in the user's post
+		// archive and in the user's current outgoing reaction
+		// pool, as well as the archive of any topics the post
+		// references. Finally, alerts are sent to any
+		// users mentioned in the new post.
+
+		//TODO - Add post to reaction pool
+
+		//TODO - Handle links so posts can be cross-referenced
+		//		by the articles to which they refer and by the
+		//		parent sites.
+
+		// Generate post ID
+		const postAccount = Channel.forNextPostBy(this.state.user);
+		const postAddress = postAccount.getAddress();
+
+		// Create new task
+		const taskID = "posting-" + postAddress;
+		await this.newTask(taskID, "Sending Post", 18);
+
+		// Get timestamp
+		//TODO - Is this needed? Does Radix not timestamp
+		//		 the payload itself?
+		const time = (new Date()).getTime();
+
+		// Build post record
+		const postRecord = {
+			type: "post",
+			subtype: "origin",		// origin, revision, retraction
+			content: post,
+			address: postAddress,
+			author: this.state.user.address,
+			parent: null,			// address of post being replied to
+			origin: postAddress,	// address of first post in thread
+			mentions: [],
+			topics: [],
+			links: [],
+			created: time
+		}
+
+		// Build reference payload and destination accounts
+		const refAccounts = [
+			Channel.forPostsBy(this.state.user.address)
+		];
+		const refRecord = {
+			type: "post-ref",
+			address: postAddress,
+			created: time
+		}
+
+		// Build alert payload
+		const alertAccounts = []
+		const alertRecord = {
+			type: "alert",
+			subtype: "mention",
+			address: postAddress,
+			by: this.state.user.address
+		}
+
+		// Store records in ledger
+		this.sendRecord([postAccount], postRecord, taskID)
+			.then(await this.sendRecord(refAccounts, refRecord, taskID))
+			.then(await this.sendRecord(alertAccounts, alertRecord, taskID))
+			.then(await this.completeTask(taskID));
+
+	}
+
+
+	async getPost(address, store=true) {
+		return new Promise((resolve) => {
+
+			// Check if post has already been stored
+			if ("content" in this.state.data.posts[address]) {
+				resolve(this.state.data.posts[address]);
+			}
+
+			// Retrieve the latest post information for the
+			// provided address
+			this.getHistory(Channel.forPost(address))
+				.then(result => {
+
+					// Build post from origin, edits,
+					// retractions, etc...
+					//TODO - this
+					const post = result[0];
+					if (post.author === this.state.user.address) {
+						post.type = "owned";
+					} else if (post.author in this.state.data.following) {
+						post.type = "following";
+					}
+					//TODO - Other classifications
+
+					// Load post's author
+					this.getProfile(post.author, false)
+						.then(profile => {
+
+							// Add this profile to the app state
+							// or return the result
+							if (store) {
+								const state = this.state;
+								state.data.posts[address] = post;
+								state.data.users[post.author] = profile;
+								this.setState(state, () => { resolve(post); })
+							} else {
+								post.author = profile;
+								resolve(post);
+							}
+
+						});
+
+				});
+
+		});
+	}
+
+
+	
 
 
 // ALERTS
+
+
+
+// TOPICS
+
+	async createTopic(id, description) {
+
+		// Adds a new topic by generating a storage
+		// channel from its ID and registering that
+		// channel with the main storage index.
+
+		// Create new task
+		const taskID = "new-topic-" + id;
+		await this.newTask(taskID, "Creating #" + id, 14);
+
+		// Generate topic channel
+		const topicAccount = Channel.forTopicWithID(id);
+		const topicAddress = channel.getAddress();
+
+		// Build topic record
+		const topicRecord = {
+			id: id,
+			description: description,
+			owner: this.user.address,
+			address: topicAddress
+		}
+
+		// Build topic reference
+		const indexAccount = Channel.forTopicIndexOf(id);
+		const indexRecord = {
+			address: topicAddress
+		}
+
+		// Store topic
+		this.sendRecord([topicAccount], topicRecord, taskID)
+			.then(this.sendRecord([indexAccount], indexRecord, taskID))
+			.then(this.completeTask(taskID));
+
+	}
+
+
+	async getTopicIndex(prefix, store=false) {
+
+		// Retreive an index of topics by the first 3
+		// letters of the ID.
+
+		// Load history
+		return new Promise((resolve) => {
+			this.getHistory(Channel.getTopicIndexFor(prefix))
+				.then(history => {
+
+					if (store) {
+						const state = this.state;
+						history.foreach(h =>
+							if (!(h in state.data.topics)) {
+								state.data.topics[h.address] = h;
+							}
+						);
+						this.setState(state, () => { resolve(history); });
+					} else {
+						resolve(history);
+					}
+					
+				});
+		});
+
+	}
+
+
+	async getTopic(address, store=false) {
+
+		// Retreives the record for a topic with the
+		// provided address.
+
+		// Return the latest record for this topic
+		return new Promise((resolve) => {
+			this.getLatest(Channel.forTopic(address))
+				.then(topic => {
+
+					if (store) {
+						const state = this.state;
+						state.data.topics[address] = topic;
+						this.setState(state, () => { resolve(topic); });
+					} else {
+						resolve(topic);
+					}
+
+				});
+		});
+
+	}
+
+
+	async getTopicByID(id, store=false) {
+		return this.getTopic(
+			Channel.forTopicWithID(id).getAddress(),
+			store
+		);
+	}
+
+
+	async deleteTopic() {
+
+	}
 
 
 
@@ -953,58 +1225,6 @@ class Demo extends Component {
 	}
 
 
-	// fetchFollowers() {
-
-	// 	// Loads the profile data for all users currently
-	// 	// being followed by the active user.
-
-	// 	// Check update is not already running
-	// 	if (this.state.data.followers.updating) { return }
-	// 	this.setFlag("followers");
-
-	// 	// Get follower index
-	// 	const followers = Object.keys(this.state.data.followers.pending);
-	// 	console.log(followers);
-
-	// 	// Create task
-	// 	this.newTask("fetch_followers", "Fetching Followers", followers.length);
-
-	// 	// Retreive follower profiles
-	// 	followers.forEach(f => {
-	// 		const profile = this.getLatest(Channel.forProfileOf(f));
-	// 		console.log("In fetchFollowers", profile);
-	// 		if (profile != null &&
-	// 				profile.constructor === Object &&
-	// 				Object.keys(profile).length !== 0) {
-	// 			this.addFollower(profile);
-	// 		}
-	// 		this.stepTask("fetch_followers");
-	// 	});
-
-	// 	// Clean up
-	// 	this.clearFlag("followers");
-	// 	this.completeTask("fetch_followers");
-
-	// }
-
-
-	// addFollower(follower) {
-
-	// 	// Adds a follower's profile record to the app state.
-
-	// 	//TODO - Handle removal of followers from this record
-	// 	console.log("In addFollower", follower);
-
-	// 	// Add the follower's profile data to the -loaded- list
-	// 	//and remove their record from the -pending- list.
-	// 	var state = this.state;
-	// 	state.data.followers.loaded[follower.id] = follower;
-	// 	delete state.data.followers.pending[follower.address];
-	// 	this.setState(state);
-
-	// }
-
-
 
 
 // RENDER
@@ -1037,6 +1257,9 @@ class Demo extends Component {
 
 					followUser={this.followUser}
 					unfollowUser={this.unfollowUser}
+
+					sendPost={this.sendPost}
+					getPost={this.getPost}
 
 					signOut={this.signOut}
 

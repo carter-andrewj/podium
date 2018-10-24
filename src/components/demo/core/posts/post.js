@@ -1,7 +1,8 @@
 import React, { Component } from 'react';
 import '../../../../App.css';
 
-import FollowerPost from './follower';
+import PostCore from './postcore';
+import FollowingPost from './following';
 import ReplyPost from './reply';
 import ReportPost from './report';
 import ReactPost from './react';
@@ -16,43 +17,103 @@ class Post extends Component {
 	constructor() {
 		super()
 		this.state = {
-
+			loading: false,
 		}
 	}
 
+
+	componentDidMount() {
+		if (!("content" in this.props.post)) {
+			const state = this.state;
+			state.loading = true;
+			this.setState(state);
+			this.props.getPost(this.props.post.address)
+				.then(() => {
+					const state = this.state;
+					state.loading = false;
+					this.setState(state);
+				});
+		}
+	}
+
+
 	render() {
 
-		console.log(this.props);
-
 		let content;
-		switch (this.props.post.type) {
+		if (this.state.loading) {
 
-			case ("follower"):
-				content = <FollowerPost post={this.props.post} />
-				break;
+			content = <div>loading {this.props.post.address}</div>
 
-			case ("reply"):
-				content = <ReplyPost post={this.props.post} />
-				break;
+		} else {
 
-			case ("report"):
-				content = <ReportPost post={this.props.post} />
-				break;
+			// Build post content
+			const postContent = <PostCore
+				user={this.props.user}
+				post={this.props.post}
+			/>
 
-			case ("react"):
-				content = <ReactPost post={this.props.post} />
-				break;
+			// Wrap post content
+			switch (this.props.post.type) {
 
-			case ("retraction"):
-				content = <RetractedPost post={this.props.post} />
-				break;
+				// Posts from users the active
+				// user is following
+				case ("following"):
+					content = <FollowingPost
+						user={this.props.user}
+						post={this.props.post}>
+						{postContent}
+					</FollowingPost>
+					break;
 
-			case ("owned"):
-				content = <OwnedPost post={this.props.post} />
-				break;
+				// Replies
+				case ("reply"):
+					content = <ReplyPost
+						user={this.props.user}
+						post={this.props.post}>
+						{postContent}
+					</ReplyPost>
+					break;
 
-			default:
-				content = <div></div>
+				// Reports
+				case ("report"):
+					content = <ReportPost
+						user={this.props.user}
+						post={this.props.post}>
+						{postContent}
+					</ReportPost>
+					break;
+
+				// Posts for reaction
+				case ("react"):
+					content = <ReactPost
+						user={this.props.user}
+						post={this.props.post}>
+						{postContent}
+					</ReactPost>
+					break;
+
+				// Retracted posts
+				case ("retraction"):
+					content = <RetractedPost
+						user={this.props.user}
+						post={this.props.post}>
+						{postContent}
+					</RetractedPost>
+					break;
+
+				// Posts by the active user
+				case ("owned"):
+					content = <OwnedPost
+						user={this.props.user}
+						post={this.props.post}>
+						{postContent}
+					</OwnedPost>
+					break;
+
+				default:
+					content = <div></div>
+
+			}
 
 		}
 

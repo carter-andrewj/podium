@@ -95,8 +95,7 @@ class Users extends Component {
 						/>
 					)}
 				</div>
-				<div className="footer-spacer">
-				</div>
+				<div className="footer-spacer"></div>
 			</div>
 		);
 	}

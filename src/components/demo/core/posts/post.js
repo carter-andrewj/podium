@@ -53,7 +53,9 @@ class Post extends Component {
 			/>
 
 			// Wrap post content
-			switch (this.props.post.type) {
+			if (this.props.omitType) {
+				content = postContent;
+			} else switch (this.props.post.type) {
 
 				// Posts from users the active
 				// user is following

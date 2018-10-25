@@ -27,7 +27,7 @@ class ChannelSet {
 	forKeystoreOf(id, pw) {
 		return getAccount("podium-keystore-for-" + id + pw)
 	}
-	forOwnershipOf(id) {	//TODO - Implement
+	forProfileWithID(id) {	//TODO - Implement
 		return getAccount("podium-ownership-of-id-" + id)
 	}
 
@@ -204,6 +204,12 @@ export function markupPost(post) {
 
 					// Handle trailing whitespace
 					return wordList.map((word, w) => {
+
+						//TODO - Handle punctuation separately from
+						// 		 the word itself (i.e.) to allow
+						//		 users to write #topic! without
+						//		 the ! counting towards the
+						//		 associated topic ID.
 
 						// Handle whitespace
 						if (word === "") {

@@ -62,7 +62,17 @@ class Core extends Component {
 
 			// Show the user profile
 			case ("profile"):
-				content = <Profile />;
+				content = <Profile
+
+					user={this.props.user}
+
+					posts={this.props.data.posts}
+					users={this.props.data.users}
+
+					getProfile={this.props.getProfile}
+					getPost={this.props.getPost}
+
+				/>;
 				break;
 
 			// Show alerts
@@ -153,6 +163,9 @@ class Core extends Component {
 
 					sendPost={this.props.sendPost}
 					getPost={this.props.getPost}
+
+					getProfileFromID={this.props.getProfileFromID}
+					getTopicFromID={this.props.getTopicFromID}
 
 				/>;
 

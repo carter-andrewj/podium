@@ -24,7 +24,11 @@ class Feed extends Component {
 		// Build feed
 		return (
 			<div ref="feed" className="Feed container">
-				<Send sendPost={this.props.sendPost} />
+				<Send
+					getProfileFromID={this.props.getProfileFromID}
+					getTopicFromID={this.props.getTopicFromID}
+					sendPost={this.props.sendPost}
+				/>
 				<div className="row">
 					<div className="col-1"></div>
 					<div className="col-10 input-col">

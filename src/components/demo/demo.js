@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import _ from 'lodash';
 import '../../App.css';
 
 import { radixUniverse, RadixUniverse,
@@ -28,6 +29,7 @@ const emptyData = {
 			address: "none"
 		}
 	},
+	topics: {},
 	alerts: {},
 	following: {},
 	followers: {}
@@ -101,6 +103,7 @@ class Demo extends Component {
 		this.receiveFollower = this.receiveFollower.bind(this);
 
 		this.getProfile = this.getProfile.bind(this);
+		this.getProfileFromID = this.getProfileFromID.bind(this);
 		// this.updateProfile = this.updateProfile.bind(this);
 		// this.updateID = this.updateID.bind(this);
 
@@ -110,7 +113,7 @@ class Demo extends Component {
 		this.createTopic = this.createTopic.bind(this);
 		this.getTopicIndex = this.getTopicIndex.bind(this);
 		this.getTopic = this.getTopic.bind(this);
-		this.getTopicByID = this.getTopicById.bind(this);
+		this.getTopicFromID = this.getTopicFromID.bind(this);
 		this.deleteTopic = this.deleteTopic.bind(this);
 
 		this.sendPost = this.sendPost.bind(this);
@@ -354,7 +357,7 @@ class Demo extends Component {
 	}
 
 
-	getLatest(account, lifetime=5) {
+	getLatest(account, lifetime=10) {
 
 		// Returns the most recent payload among all
 		// data for the provided -account-.
@@ -493,6 +496,7 @@ class Demo extends Component {
 		// Create user identity
 		const identityManager = new RadixIdentityManager();
 		const identity = identityManager.generateSimpleIdentity();
+		const address = identity.account.getAddress();
 
 		// Generate user public record
 		const time = (new Date()).getTime()
@@ -502,8 +506,7 @@ class Demo extends Component {
 			bio: "I am a normal human person.",
 			picture: "./images/profile-placeholder.png",
 			created: time,
-			updated: time,
-			address: identity.account.getAddress()
+			address: address
 		}
 		const profileAccount = Channel.forProfileOf(
 			identity.account.getAddress());
@@ -512,12 +515,20 @@ class Demo extends Component {
 		// Generate record of this user in the public index
 		const rosterAccount = Channel.forUserRoster();
 		const rosterPayload = JSON.stringify({
-			address: identity.account.getAddress(),
+			address: address,
 			id: profile.id,
 			created: (new Date()).getTime(),
 		});
 
+		// Generate record of this user's address owning this ID
+		const ownershipAccount = Channel.forProfileWithID(id);
+		const ownershipPayload = JSON.stringify({
+			id: id,
+			address: address
+		});
+
 		// Encrypt keypair
+		//TODO - Convert to use new helper functions for txns
 		const keyStore = Channel.forKeystoreOf(id, pw);
 		RadixKeyStore.encryptKey(identity.keyPair, pw)
 			.then(async (encryptedKey) => {
@@ -576,11 +587,31 @@ class Demo extends Component {
 												error: error => { this.failTask("register", error); },
 												complete: async () => {
 
-													// Close Task
-													await this.completeTask("register");
+													// Log progress
+													await this.stepTask("register");
 
-													// Sign user in
-													this.signIn(id, pw);
+													// Store ownership record for this ID
+													RadixTransactionBuilder
+														.createPayloadAtom(
+															[ownershipAccount],
+															this.state.podium.id,
+															ownershipPayload,
+															false
+														)
+														.signAndSubmit(identity)
+														.subscribe({
+															next: async status => { await this.stepTask("register"); },
+															error: error => { this.failTask("register", error); },
+															complete: async () => {
+
+																// Close Task
+																await this.completeTask("register");
+
+																// Sign user in
+																this.signIn(id, pw);
+
+															}
+														});
 
 												},
 											});
@@ -600,7 +631,12 @@ class Demo extends Component {
 
 
 	async signIn(id, pw) {
+
+		//TODO - Allow user to cache encrypted key locally
+		//		 for faster sign-in
 		
+		//TODO - Sign in before finding all followers, etc..
+
 		// Enter loading mode
 		this.setMode("loading");
 
@@ -609,11 +645,12 @@ class Demo extends Component {
 
 		// Load keypair from keystore
 		const keyStore = Channel.forKeystoreOf(id, pw);
-		this.getLatest(keyStore)
+		this.getLatest(keyStore, 20)
 			.then(async (encryptedKey) => {
 
 				//TODO - Handle an empty value for -encryptedKey-
 				// 		 (indicates wrong id/pw)
+				console.log(encryptedKey);
 
 				// Log progress
 				await this.stepTask("signin");
@@ -836,6 +873,8 @@ class Demo extends Component {
 
 // USERS
 
+	//TODO - This should default to store=false so querying
+	//		 components can update state atomically
 	async getProfile(address, store=true) {
 		return new Promise((resolve) => {
 
@@ -862,6 +901,29 @@ class Demo extends Component {
 
 				});
 
+		});
+	}
+
+
+	async getProfileFromID(id, store=false) {
+		return new Promise((resolve) => {
+
+			// Check if profile has already been stored
+			const user = Object.keys(this.state.data.users)
+				.filter(k => this.state.data.users[k].id === id);
+			if (user.length > 0) { resolve(user[0]); }
+
+			this.getLatest(Channel.forProfileWithID(id))
+				.then(item => {
+					if (_.isEmpty(item)) {
+						resolve(false);
+					} else {
+						this.getProfile(item.address, store)
+							.then(profile => {
+								resolve(profile);
+							});
+					}
+				});
 		});
 	}
 
@@ -1012,7 +1074,7 @@ class Demo extends Component {
 
 		// Generate topic channel
 		const topicAccount = Channel.forTopicWithID(id);
-		const topicAddress = channel.getAddress();
+		const topicAddress = topicAccount.getAddress();
 
 		// Build topic record
 		const topicRecord = {
@@ -1048,11 +1110,11 @@ class Demo extends Component {
 
 					if (store) {
 						const state = this.state;
-						history.foreach(h =>
+						history.foreach(h => {
 							if (!(h in state.data.topics)) {
 								state.data.topics[h.address] = h;
 							}
-						);
+						});
 						this.setState(state, () => { resolve(history); });
 					} else {
 						resolve(history);
@@ -1068,6 +1130,8 @@ class Demo extends Component {
 
 		// Retreives the record for a topic with the
 		// provided address.
+
+		//TODO - Check topic has not already been stored
 
 		// Return the latest record for this topic
 		return new Promise((resolve) => {
@@ -1088,11 +1152,24 @@ class Demo extends Component {
 	}
 
 
-	async getTopicByID(id, store=false) {
-		return this.getTopic(
-			Channel.forTopicWithID(id).getAddress(),
-			store
-		);
+	async getTopicFromID(id, store=false) {
+		return new Promise((resolve) => {
+
+			// Check if profile has already been stored
+			const topic = Object.keys(this.state.data.topics)
+				.filter(k => this.state.data.topics[k].id === id);
+			if (topic.length > 0) { resolve(topic[0]); }
+
+			this.getLatest(Channel.forTopicWithID(id))
+				.then(item => {
+					if (_.isEmpty(item)) {
+						resolve(false);
+					} else {
+						this.getProfile(item.address, store)
+							.then(t => { resolve(t); });
+					}
+				});
+		});
 	}
 
 
@@ -1254,6 +1331,10 @@ class Demo extends Component {
 					data={this.state.data}
 
 					getProfile={this.getProfile}
+					getProfileFromID={this.getProfileFromID}
+
+					getTopic={this.getTopic}
+					getTopicFromID={this.getTopicFromID}
 
 					followUser={this.followUser}
 					unfollowUser={this.unfollowUser}

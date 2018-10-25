@@ -422,6 +422,7 @@ input:focus {
 .loader-image {
 	width: 5%;
 	margin: auto;
+	filter: drop-shadow(0 0 0.5em #888);
 	animation: spin 5s infinite ease-in-out;
 }
 
@@ -617,7 +618,7 @@ input:focus {
 	max-height: none;
 	margin: auto;
 	resize: none;
-	border: 2px solid var(--green);
+	border: 2px solid;
 	border-radius: 0 0 1.8em 0;
 	padding: 0.4em;
 	font-size: 100%;
@@ -628,10 +629,21 @@ input:focus {
 	white-space: pre-wrap;
 }
 
-.post-input:focus {
+.post-input-open {
 	outline: none;
 	min-height: 4.8em;
 	border-radius: 0;
+}
+
+.post-input-with-validations {
+	border-bottom: 0;
+}
+
+.post-validation-box {
+	border: 0.1em solid;
+	border-top: 0;
+	margin-left: 1.1em;
+	margin-right: 1.1em;
 }
 
 .post-input-placeholder {
@@ -670,6 +682,10 @@ input:focus {
 	line-height: 1.35em;
 }
 
+.post-input-text {
+	display: inline-block;
+}
+
 .post-input-item {
 	padding-bottom: 0.2em;
 }
@@ -678,30 +694,94 @@ input:focus {
 	color: var(--green);
 }
 
-.post-input-mention:hover {
-	text-decoration: underline;
-}
-
 .post-input-topic {
 	color: var(--tan);
-}
-
-.post-input-topic:hover {
-	text-decoration: underline;
 }
 
 .post-input-link {
 	color: var(--blue);
 }
 
-.post-input-link:hover {
-	text-decoration: underline;
+.post-input-border-pending {
+	border-color: var(--dark-grey);
+}
+
+.post-input-border-failed {
+	border-color: var(--red);
+}
+
+.post-input-border-passed {
+	border-color: var(--green);
+}
+
+.post-reference-fail {
+	color: var(--red);
+	text-decoration: line-through;
+}
+
+.post-validation-hide {
+	border: 0;
 }
 
 .send-col {
 	position: relative;
 }
 
+
+
+
+
+.notif-card {
+	border-radius: 0;
+	border-bottom: 0;
+	border-top: 0;
+	line-height: 0em;
+	height: 2em;
+	padding: 0;
+	border: 0.1em solid white;
+	border-top: 0;
+}
+
+.notif-title {
+	display: inline-block;
+    float: left;
+    height: 1.85em;
+    min-width: 2em;
+    line-height: 1.8em;
+    border-left: 0.05em solid white;
+}
+
+.notif-glyph {
+	font-size: 120%;
+	font-weight: bold;
+	color: white;
+}
+
+.notif-message-holder {
+	display: inline-block;
+	float: left;
+	line-height: 2em;
+}
+
+.notif-message{
+	font-size: 80%;
+	font-weight: 400;
+	text-align: left;
+	margin: 0;
+	padding-left: 0.8em;
+}
+
+.notif-icon {
+	display: inline-block;
+	float: right;
+	height: 2em;
+	min-width: 2em;
+	line-height: 2em;
+}
+
+.notif-icon-pending {
+	animation: spin 3s infinite ease-in-out;
+}
 
 
 
@@ -891,6 +971,82 @@ input:focus {
 .follow-button:hover {
 	color: white;
 	background: var(--blue);
+}
+
+
+
+
+.profile-header {
+	height: 11.6em;
+	margin-top: 2em;
+	border-radius: 0 0 0 2.6em;
+}
+
+.profile-picture {
+	position: absolute;
+	top: 0.8em;
+	bottom: 0.8em;
+	left: 0.8em;
+	width: 10em;
+	height: 10em;
+	border-radius: 0 0 0 2em;
+	border: 0.1em solid transparent;
+}
+
+.profile-name-holder {
+	position: absolute;
+	left: 11.6em;
+	bottom: 1.4em;
+	font-family: var(--titles);
+}
+
+.profile-name {
+	margin: 0;
+	display: inline-block;
+	font-size: 180%;
+	color: var(--green);
+}
+
+.profile-id {
+	margin: 0;
+	margin-left: 1em;
+	display: inline-block;
+	font-size: 120%;
+	color: var(--grey);
+}
+
+.profile-address-holder {
+	position: absolute;
+	left: 11.6em;
+	bottom: 0.8em;
+}
+
+.profile-address {
+	margin: 0;
+	font-size: 60%;
+	font-weight: 400;
+	line-height: 1em;
+	color: var(--dark-grey);
+}
+
+.profile-bio-holder {
+	position: absolute;
+	left: 11.6em;
+	right: 3.6em;
+	top: 0.8em;
+	bottom: 4em;
+	padding: 0.2em 0.5em;
+	border: 0.1em solid transparent;
+}
+
+.profile-editable:hover {
+	border-color: var(--pale-green);
+	cursor: pointer;
+}
+
+.profile-bio {
+	text-align: left;
+	font-weight: 400;
 }
 
 

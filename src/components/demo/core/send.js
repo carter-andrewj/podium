@@ -87,6 +87,9 @@ class Send extends Component {
 	// Format post box content upon input
 	updatePost(key) {
 
+		//TODO - Fix pasting into the box breaking the cursor
+		//		 position and subsequent editing
+
 		// Get current post string
 		let raw = this.state.raw;
 
@@ -128,7 +131,7 @@ class Send extends Component {
 
 				// Return
 				case 13:
-					raw = raw.slice(0, cursor[0]) + "\n" +
+					raw = raw.slice(0, cursor[0]) + "\r" +
 						raw.slice(cursor[1]);
 					cursor = [cursor[0] + 1, cursor[0] + 1]
 					break;
@@ -251,6 +254,8 @@ class Send extends Component {
 					' id="post-line-' + line + '"' +
 					' class="post-input-line">';
 			}
+
+
 			
 			// Build result
 			html.push(leader +
@@ -401,8 +406,6 @@ class Send extends Component {
 		//TODO - Prevent posting while validation fails exist
 
 		//TODO - Lock post on send
-
-		console.log("sending");
 
 		// Dispatch post to radix net
 		this.props.sendPost(this.state.raw)
@@ -646,28 +649,24 @@ class Send extends Component {
 
     	// Render
 		return (
-			<div ref="send" className="send-box card">
-				<div className="row">
-					<div className="col-sm-12 input-col">
-						<div
-							contentEditable="true"
-							suppressContentEditableWarning={true}
-							ref={input => {this.input = input}}
-							className={"post-input" + inputClass +
-								validationClass + borderClass}
-							onFocus={this.setFocus.bind(this)}
-							onBlur={this.clearFocus.bind(this)}
-							onKeyDown={this.keyDown.bind(this)}
-							onKeyPress={this.keyStroke.bind(this)}
-							dangerouslySetInnerHTML={{__html: content}}>
-						</div>
-						<div className={"post-validation-box" +
-								borderClass + borderClassVal}>
-							{validation}
-						</div>
-						{(this.state.focus || this.state.raw !== "") ? footer : null}
-					</div>
+			<div ref="send" className="input-col">
+				<div
+					contentEditable="true"
+					suppressContentEditableWarning={true}
+					ref={input => {this.input = input}}
+					className={"post-input" + inputClass +
+						validationClass + borderClass}
+					onFocus={this.setFocus.bind(this)}
+					onBlur={this.clearFocus.bind(this)}
+					onKeyDown={this.keyDown.bind(this)}
+					onKeyPress={this.keyStroke.bind(this)}
+					dangerouslySetInnerHTML={{__html: content}}>
 				</div>
+				<div className={"post-validation-box" +
+						borderClass + borderClassVal}>
+					{validation}
+				</div>
+				{(this.state.focus || this.state.raw !== "") ? footer : null}
 			</div>
 		);
 	}

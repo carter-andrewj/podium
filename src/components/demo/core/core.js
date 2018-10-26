@@ -167,6 +167,9 @@ class Core extends Component {
 					getProfileFromID={this.props.getProfileFromID}
 					getTopicFromID={this.props.getTopicFromID}
 
+					promotePost={this.props.promotePost}
+					reportPost={this.props.reportPost}
+
 				/>;
 
 		}

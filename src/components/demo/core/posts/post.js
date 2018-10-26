@@ -16,23 +16,18 @@ class Post extends Component {
 
 	constructor() {
 		super()
-		this.state = {
-			loading: false,
-		}
+		this.state = {}
 	}
 
 
 	componentDidMount() {
 		if (!("content" in this.props.post)) {
-			const state = this.state;
-			state.loading = true;
-			this.setState(state);
 			this.props.getPost(this.props.post.address)
 				.then(() => {
-					const state = this.state;
-					state.loading = false;
-					this.setState(state);
+					this.props.readyPost(this.props.post.address);
 				});
+		} else {
+			this.props.readyPost(this.props.post.address);
 		}
 	}
 
@@ -40,16 +35,26 @@ class Post extends Component {
 	render() {
 
 		let content;
-		if (this.state.loading) {
+		if (!(this.props.ready)) {
 
-			content = <div>loading {this.props.post.address}</div>
+			content = null;
 
 		} else {
 
 			// Build post content
 			const postContent = <PostCore
+
 				user={this.props.user}
 				post={this.props.post}
+
+				getProfileFromID={this.props.getProfileFromID}
+				getTopicFromID={this.props.getTopicFromID}
+
+				sendPost={this.props.sendPost}
+
+				promotePost={this.props.promotePost}
+				reportPost={this.props.reportPost}
+				
 			/>
 
 			// Wrap post content

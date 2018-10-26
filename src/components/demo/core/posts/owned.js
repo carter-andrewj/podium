@@ -18,9 +18,6 @@ class OwnedPost extends Component {
 		// Build feed
 		return (
 			<div className="owned-post">
-				<div className="post-taxonomy owned-taxonomy">
-					<p className="taxonomy-text">you</p>
-				</div>
 				{this.props.children}
 			</div>
 		);

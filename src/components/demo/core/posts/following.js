@@ -17,11 +17,6 @@ class FollowingPost extends Component {
 		// Build feed
 		return (
 			<div className="following-post">
-				<div className="post-taxonomy follower-taxonomy">
-					<div className="taxonomy-holder">
-						<p className="taxonomy-text">following</p>
-					</div>
-				</div>
 				{this.props.children}
 			</div>
 		);

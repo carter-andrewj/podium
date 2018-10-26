@@ -1053,6 +1053,15 @@ class Demo extends Component {
 	}
 
 
+	async promotePost(address) {
+		console.log("PROMOTED POST ", address);
+	}
+
+	async reportPost(address) {
+		console.log("REPORTED POST ", address);
+	}
+
+
 	
 
 
@@ -1341,6 +1350,8 @@ class Demo extends Component {
 
 					sendPost={this.sendPost}
 					getPost={this.getPost}
+					promotePost={this.promotePost}
+					reportPost={this.reportPost}
 
 					signOut={this.signOut}
 

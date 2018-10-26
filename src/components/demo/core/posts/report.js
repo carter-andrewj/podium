@@ -18,7 +18,6 @@ class ReportPost extends Component {
 		// Build feed
 		return (
 			<div className="report-post">
-				<div className="post-taxonomy report-taxonomy">reported</div>
 				{this.props.children}
 			</div>
 		);

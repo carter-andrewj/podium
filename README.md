@@ -129,19 +129,26 @@ Future systems (not planned for the prototype):
   - Built-In Radix Nodes
 - Direct Messaging
 - Governance
-  - Create Rules
-  - Update Rules
+  - Platform Constitution
+  - Create Rules/Sanctions
+  - Amend Rules/Sanctions
+  - Appeals
 - Accounts
   - Account Transfering
   - Account Linking
   - Account Types (organization vs individual, etc...)
   - Posting to other Social Networks
 - Features
-  - Polls
-  - User-Paid, User-Controlled Ad Targeting
+  - Bias-balanced Polling
+  - AUD Fundraising Campaigns (for charities, etc...)
+  - Opt-in Ad Targeting that pays the targeted users
+  - Passporting (using your Podium ID on other sites/apps)
+  - P2P payments (using AUD as a functional currency)
+  - Media validation (partnering with media veracity firms like Onfido to flag fake/altered images, etc...)
 - Infrastructure
   - Post Curation
   - Smart Contracts
+  - Deep Search
   - API
   - iOS/Android/Desktop/etc... Apps
 

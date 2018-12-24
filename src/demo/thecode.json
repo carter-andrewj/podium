@@ -1,0 +1,219 @@
+[
+
+
+
+// ABUSIVE BEHAVIOUR
+
+	{
+		
+		// Title and Identifier for this article
+		"id": "discrimination",
+		"name": "Discrimination",
+
+		// Main text of this article of the code
+		"text": "No user shall pass judgement, or call for judgement to be passed, on another person (user or non-user) or group unless said judgement relates to an action (or deliberate inaction) taken by that subject which had material effect on others without their consent.",
+
+		// Advice to the reporting user when detailing their complaint
+		"advice": [
+			"",
+			"If the discrimination is deliberately subtle (i.e. dog whistling), be sure to detail this for those users who may be unaware of the full meaning implied."
+		],
+
+		// Tests posed to the jury. A positive answer to all of these
+		// in turn results in a "guilty" vote.
+		"tests": [
+			"Is the posting user passing judgement on another person or group?",
+			"Is the judgement based on an action (or deliberate inaction) under {the subject}'s control?",
+			"Did {the subject}'s action materially affect another person or group?",
+			"Can the impacted party be considered to have given informed consent to this effect?",
+		],
+
+		// Ratings given by the jury (1-10) to determine the scale of
+		// sanctions imposed alongside other factors (repeat offenses, etc...)
+		"considerations": [
+			"How severe is the discriminatory judgement being passed?",
+			"How severe are the potential impacts of this discrimination?",
+			"To what degree might {subject} have reasonably beleived they had received informed consent?"
+		],
+
+	},
+
+
+	{
+		"id": "abuse",
+		"name": "Unwarranted Abuse",
+		"article": ""
+	},
+
+
+	{
+		"id": "harassment",
+		"name": "Harassment"
+	},
+
+
+	{
+		"id": "victimblaming",
+		"name": "Victim Blaming"
+	},
+
+
+	{
+		"id": "dehumanisation",
+		"name": "Dehumanisation"
+	},
+
+
+
+
+// LOGICAL FALLACIES
+
+	{
+		"id": "Whataboutism",
+		"name": "Whataboutism"
+	},
+
+
+	{
+		"id": "adhominem",
+		"name": "Attack on the Person"
+		// Directs the reporting user to a dual report for both 'abuse' and 'whataboutism'...?
+	},
+
+
+	{
+		"id": "strawman",
+		"name": "Straw Man Argument"
+	},
+
+
+	{
+		"id": "falsedichotomy",
+		"name": "False Dichotomy"
+	}
+
+
+
+
+// PLATFORM VIOLATIONS
+
+	{
+		"id": "falserevision",
+		"name": "False Revision",
+		"article": "No user shall edit a post in such a way as to materially change its content"
+	},
+
+
+	{
+		"id": "maliciousreporting",
+		"name": "Malicious Reporting"
+	},
+
+
+	{
+		"id": "impersonation",
+		"name": "Impersonation"
+	},
+
+
+	{
+		"id": "scamming",
+		"name": "Scamming"
+	},
+
+
+
+
+// FALSEHOODS
+
+	{
+		"id": "misleadingcontent",
+		"name": "Misleading Content",
+	},
+
+
+	{
+		"id": "dishonesty",
+		"name": "Dishonesty"
+	},
+
+
+	{
+		"id": "gaslighting",
+		"name": "Gaslighting"
+	},
+
+
+	{
+		"id": "antitransparency",
+		"name": "Anti-Transparency",
+		"text": "No user shall intentionally withold information pertinent to the decision-making or wellbeing of others, except where such disclosure would be of greater detriment to a 3rd party.",
+		"tests": [
+			"Has the user failed to disclose information?",
+			"Could witholding this information potentially result in at least one of the following: (a) people are prevented/hindered from making an informed decision; (b) people are prevented/hindered from providing informed consent to another; (c) people suffer some other result detrimental to their wellbeing",
+			"Does disclosing this information result in less harm than witholding?",
+		],
+		"considerations": [
+			"How much opportunity has the user had to disclose this information previously?"
+			"How great a harm might witholding this information cause?",
+			"How great a harm might disclosing this information cause?",
+			"To what degree might the witholding user benefit from this antitransparency?"
+		]
+	},
+
+
+	{
+		"id": "denialism",
+		"name": "Denialism"
+	},
+
+
+	{
+		"id": "willfulignorance",
+		"name": "Willful Ignorance",
+		"text": "No user shall "
+	},
+
+
+	{
+		"id": "opinionasfact",
+		"name": "Opinion Presented as Fact"
+	},
+
+
+	{
+		"id": "cherrypicking",
+		"name": "Cherry Picking"
+	},
+
+
+
+
+// COMMUNITY DEGREDATION
+
+	{
+		"id": "playingthevictim",
+		"name": "Playing the Victim"
+	},
+
+
+	{
+		"id": "flawednormalization",
+		"name": "Flawed Normalization",
+		"article": "No user shall call for "
+	},
+
+
+	{
+		"id": "promotingviolence",
+		"name": "Promoting Violence"
+	},
+	
+
+	{
+		"id": "abitraryexceptionalism",
+		"name": "Abitrary Exceptionalism"
+		// Claiming superiority based on unearned acheivements - nationalism, etc...
+	}
+
+]

@@ -23,28 +23,22 @@ const emptyCaret = Map(fromJS({
 const defState = Map(fromJS({
 	raw: "",
 	focus: false,
+	highlight: null,
 	sending: false,
 	hider: null,
 	valid: "pending",
 	caret: emptyCaret,
 	html: "",
 	cost: 0,
-	references: {
-		mentions: {},
-		links: {},
-		topics: {}
-	}
+	references: {}
 }))
 
-
-
-function isValid(refs) {
-	return Object.keys(refs).reduce((r, n) => {
-		if (r === "failed" || refs[n].valid === "failed") { return "failed"; }
-		if (r === "pending" || refs[n].valid === "pending") { return "pending"; }
-		return "passed";
-	}, "passed");
+const refOrder = {
+	"mention": 0,
+	"topic": 1,
+	"link": 2
 }
+
 
 
 
@@ -80,6 +74,13 @@ class Send extends Component {
 		if (this.props.replyingTo) {
 			this.input.focus();
 		}
+	}
+
+
+	highlight(target) {
+		this.updateState(state => state
+			.set("highlight", target)
+		);
 	}
 
 
@@ -148,6 +149,7 @@ class Send extends Component {
 
 		// Get current post string
 		let raw = this.state.data.get("raw");
+		var references = this.state.data.get("references");
 
 		// Get cursor and selection position
 		let cursor;
@@ -204,6 +206,8 @@ class Send extends Component {
 					cursor = [pos, pos];
 					break;
 
+				//TODO - Handle Punctuation
+
 				//TODO - Sanitise input of special characters
 
 				// For all other characters, add to text string at cursor position
@@ -216,32 +220,31 @@ class Send extends Component {
 
 		}
 
-		// Construct post html from result
+		// Markup post
 		const markup = markupPost(raw);
-		
 
-		//WARNING - You may be tempted to switch this assignment
-		//			for the global const -emptyCaret- which contains
-		//			these exact values. DO NOT DO THIS. Because
-		//			JS is fucking stupid about how it handles
-		//			global variables, making this change somehow
-		//			instead OVERWRITES THE GLOBAL VARIABLE with
-		//			the previous value of -caret- even though
-		//			that should be impossible. Yes - to be clear -
-		//			assigning a new variable the value of an
-		//			existing global variable instead assigns
-		//			the value to the global variable. Don't believe
-		//			me? Try it. Switch the map below out for
-		//			-emptyCaret-, then load the app and type
-		//			anything into the Send box before selecting
-		//			and deleting the whole thing. Instead of
-		//			setting the caret back to zero (as in the
-		//			map below) JS will try to set it to the most
-		//			recent value and crash. The line below
-		//			fixes it, despite this being batshit stupid.
-		// UPDATE: Is this fixed by the switch to immutable.js??
+		// Deconstruct post references
+		var oldrefs = Map({});
+		var newrefs = Map({});
+		if (raw !== this.state.data.get("raw")) {
+			markup.filter(w => w.reference)
+				.forEach(w => {
+					if (references.has(w.word)) {
+						oldrefs = oldrefs.set(w.word,
+							references.get(w.word));
+					} else {
+						newrefs = newrefs.set(w.word, Map({
+							id: w.word,
+							type: w.type,
+							valid: "pending"
+						}));
+					}
+				});
+			references = oldrefs.merge(newrefs);
+		}
+
+		// Construct post html from result
 		let caret = emptyCaret;
-
 		let html = [];
 		let cost = 0;
 		let line = 0;
@@ -273,28 +276,10 @@ class Send extends Component {
 			depth = word.depth;
 
 			// Handle references
-			const refs = this.state.data.get("references");
 			let postClasses = "";
-			if (word.type === "mention") {
-				const w = word.word.substring(1, word.word.length);
-				if (w in refs.get("mentions") &&
-						!(refs.getIn(["mentions", w, "valid"]))) {
-					postClasses += "post-reference-fail ";
-				}
-			}
-			if (word.type === "topic") {
-				const w = word.word.substring(1, word.word.length);
-				if (w in refs.get("topics") &&
-						!(refs.getIn(["topics", w, "valid"]))) {
-					postClasses += "post-reference-fail ";
-				}
-			}
-			if (word.type === "link") {
-				const w = word.word;
-				if (w in refs.get("links") &&
-						!(refs.getIn(["links", w, "valid"]))) {
-					postClasses += "post-reference-fail ";
-				}
+			if (word.reference && 
+					!(references.getIn([word.word, "valid"]))) {
+				postClasses += "post-reference-fail ";
 			}
 
 			// Handle new lines
@@ -321,153 +306,74 @@ class Send extends Component {
 
 		}
 
-		//TODO - Convert references to a single Map instead of
-		//	     separate maps for each type. And make immutable.
-
-		// Break out post elements
-		let mentions = Map({});
-		markup.filter(w => w.type === "mention")
-			.map(w => w.word.substring(1, w.word.length))
-			.forEach(w => {
-				if (w in this.state.data
-						.getIn(["references", "mentions"])) {
-					mentions = mentions.set(w, this.state.data
-						.getIn(["references", "mentions", w]));
-				} else {
-					mentions = mentions.set(w, Map({
-						id: w,
-						type: "mention",
-						valid: "pending"
-					}));
-					this.validateMention(w)
-						.then(valid => {
-							if (w in this.state.data
-									.getIn(["references", "mentions"])) {
-								if (valid) {
-									this.updateState(state =>
-										state.update("references",
-											(r) => r.setIn(
-												["mentions", w, "valid"],
-												"passed"
-											)),
-										() => { this.updatePost(false); }
-									);
-								} else {
-									this.updateState(state =>
-										state.update("references",
-											(r) => r.setIn(
-												["mentions", w, "valid"],
-												"failed"
-											)),
-										() => { this.updatePost(false); }
-									);
-								}
-							}
-						});
-				}
-			});
-		let topics = Map({});
-		markup.filter(w => w.type === "topic")
-			.map(w => w.word.substring(1, w.word.length))
-			.forEach(w => {
-				if (w in this.state.data
-						.getIn(["references", "topics"])) {
-					topics = topics.set(w, this.state.data
-						.getIn(["references", "topics", w]));
-				} else {
-					topics = topics.set(w, Map({
-						id: w,
-						type: "topic",
-						valid: "pending"
-					}));
-					this.validateTopic(w)
-						.then(valid => {
-							if (w in this.state.data
-									.getIn(["references", "topics"])) {
-								if (valid) {
-									this.updateState(state =>
-										state.update("references",
-											(r) => r.setIn(
-												["topics", w, "valid"],
-												"passed"
-											)),
-										() => { this.updatePost(false); }
-									);
-								} else {
-									this.updateState(state =>
-										state.update("references",
-											(r) => r.setIn(
-												["topics", w, "valid"],
-												"failed"
-											)),
-										() => { this.updatePost(false); }
-									);
-								}
-							}
-						});
-				}
-			});
-		let links = Map({});
-		markup.filter(w => w.type === "link")
-			.map(w => w.word)
-			.forEach(w => {
-				if (w in this.state.data
-						.getIn(["references", "links"])) {
-					links = links.set(w, this.state.data
-						.getIn(["references", "links", w]));
-				} else {
-					links = links.set(w, Map({
-						id: w,
-						type: "link",
-						valid: "pending"
-					}));
-					this.validateLink(w)
-						.then(valid => {
-							if (w in this.state.data
-									.getIn(["references", "links"])) {
-								if (valid) {
-									this.updateState(state =>
-										state.update("references",
-											(r) => r.setIn(
-												["links", w, "valid"],
-												"passed"
-											)),
-										() => { this.updatePost(false); }
-									);
-								} else {
-									this.updateState(state =>
-										state.update("references",
-											(r) => r.setIn(
-												["links", w, "valid"],
-												"failed"
-											)),
-										() => { this.updatePost(false); }
-									);
-								}
-							}
-						});
-				}
-			});
 
 		// Store in state
-		this.updateState(state => state
-			.set("raw", raw)
-			.set("caret", caret)
-			.set("html", html.reduce((full, next) => full + next, ""))
-			.set("cost", (cost > 0) ?
-				Math.round(cost + Settings.costs.overhead) :
-				0)
-			.set("references", Map(fromJS({
-				mentions: mentions,
-				topics: topics,
-				links: links
-			})))
+		this.updateState(
+
+			// Update state
+			state => state
+				.set("raw", raw)
+				.set("caret", caret)
+				.set("html", html.reduce((full, next) => full + next, ""))
+				.set("cost", (cost > 0) ?
+					Math.round(cost + Settings.costs.overhead) : 0)
+				.set("references", references),
+
+			// And then validate any new references
+			async () => {
+				newrefs.forEach((r) => {
+					this.validateReference(r)
+						.then(valid => {
+							if (valid) {
+								this.updateState(state =>
+									state.setIn(
+										["references", r.get("id"), "valid"],
+										"passed"
+									),
+									() => { this.updatePost(false); }
+								);
+							} else {
+								this.updateState(state =>
+									state.setIn(
+										["references", r.get("id"), "valid"],
+										"failed"
+									),
+									() => { this.updatePost(false); }
+								);
+							}
+						});
+				});
+			}
+
 		);
 
 	}
 
 
+	async validateReference(ref) {
+		return new Promise((resolve) => {
+			switch (ref.get("type")) {
+				case ("mention"):
+					this.validateMention(ref.get("id"))
+						.then(valid => resolve(valid));
+					break;
+				case ("topic"):
+					this.validateTopic(ref.get("id"))
+						.then(valid => resolve(valid));
+					break;
+				case ("link"):
+					this.validateLink(ref.get("id"))
+						.then(valid => resolve(valid));
+					break;
+				default:
+					resolve(false);
+			}
+		});
+	}
+
+
 	validateMention(id) {
+		id = id.substring(1, id.length);
 		return new Promise((resolve) => {
 			this.props.getProfileFromID(id)
 				.then(profile => {
@@ -482,6 +388,7 @@ class Send extends Component {
 
 
 	validateTopic(id) {
+		id = id.substring(1, id.length);
 		return new Promise((resolve) => {
 			this.props.getTopicFromID(id)
 				.then(topic => {
@@ -517,7 +424,6 @@ class Send extends Component {
 			);
 
 			// Dispatch post to radix net
-			console.log(this.state.data.get("raw"))
 			this.props.sendPost(this.state.data.get("raw"),
 							    this.props.replyingTo)
 				.then(() => {
@@ -565,12 +471,17 @@ class Send extends Component {
 		}
 
 		// Validate post
-		const valid = (this.state.data.get("raw") === "") ? "pending" : 
-			isValid({
-				...this.state.data.getIn(["references", "mentions"]).toJS(),
-				...this.state.data.getIn(["references", "topics"]).toJS(),
-				...this.state.data.getIn(["references", "links"]).toJS()
-			});
+		const valid = (this.state.data.get("raw") === "") ?
+			"pending" : 
+			this.state.data
+				.get("references")
+				.reduce((val, ref) => {
+					if (val === "pending" || val === "failed") {
+						return val;
+					} else {
+						return ref.get("valid");
+					}
+				}, "passed");
 		if (valid !== this.state.data.get("valid")) {
 			this.updateState(state => state
 				.set("valid", valid)
@@ -613,143 +524,320 @@ class Send extends Component {
 				'</p>';
 			}
 
+			// Build post insert buttons
+			let insertHighlight;
+			switch (this.state.data.get("highlight")) {
+				case ("image"):
+					insertHighlight = "insert image";
+					break;
+				case ("gif"):
+					insertHighlight = "insert gif";
+					break;
+				case ("emoji"):
+					insertHighlight = "emojis";
+					break;
+				case ("video"):
+					insertHighlight = "insert video";
+					break;
+				case ("save"):
+					insertHighlight = "save to drafts";
+					break;
+				case ("discard"):
+					insertHighlight = "discard post";
+					break;
+				default:
+					insertHighlight = "";
+			}
+			let insertCard;
+			if (this.state.data.get("focus")) {
+				insertCard = <div className="input-support insert-card card">
+					<div className="insert-holder">
+						<div className="insert-panel insert-column-1">
+							<div
+								className="insert-button insert-image"
+								onMouseOver={this.highlight.bind(this, "image")}
+								onMouseOut={this.highlight.bind(this, null)}>
+								<span className="fas fa-image insert-button-icon"></span>
+							</div>
+							<div
+								className="insert-button insert-gif"
+								onMouseOver={this.highlight.bind(this, "gif")}
+								onMouseOut={this.highlight.bind(this, null)}>
+								<span className="fas fa-fire insert-button-icon"></span>
+							</div>
+						</div>
+						<div className="insert-panel insert-column-2">
+							<div
+								className="insert-button insert-emoji"
+								onMouseOver={this.highlight.bind(this, "emoji")}
+								onMouseOut={this.highlight.bind(this, null)}>
+								<span className="fas fa-smile insert-button-icon"></span>
+							</div>
+							<div
+								className="insert-button insert-video"
+								onMouseOver={this.highlight.bind(this, "video")}
+								onMouseOut={this.highlight.bind(this, null)}>
+								<span className="fas fa-video insert-button-icon"></span>
+							</div>
+						</div>
+						<div className="insert-panel insert-column-3">
+							<div
+								className="insert-button discard-post"
+								onMouseOver={this.highlight.bind(this, "discard")}
+								onMouseOut={this.highlight.bind(this, null)}>
+								<span className="fas fa-trash insert-button-icon"></span>
+							</div>
+							<div
+								className="insert-button save-post"
+								onMouseOver={this.highlight.bind(this, "save")}
+								onMouseOut={this.highlight.bind(this, null)}>
+								<span className="fas fa-save insert-button-icon"></span>
+							</div>
+						</div>
+						<div className="insert-highlight">
+							<p className="highlight-text">
+								{insertHighlight}
+							</p>
+						</div>
+					</div>
+				</div>
+			}
+
+			// Build balances panel
+			let balanceHighlight;
+			switch (this.state.data.get("highlight")) {
+				case ("pod"):
+					balanceHighlight = <span className="pod-text">
+						pay with POD only
+					</span>
+					break;
+				case ("podaud"):
+					balanceHighlight = <span>
+						<span className="pod-text">pay with POD, </span>
+						<span className="aud-text">then AUD</span>
+					</span>
+					break;
+				case ("audpod"):
+					balanceHighlight = <span>
+						<span className="aud-text">pay with AUD, </span>
+						<span className="pod-text">then POD</span>
+					</span>
+					break;
+				case ("aud"):
+					balanceHighlight = <span className="aud-text">
+						pay with AUD only
+					</span>
+					break;
+				default:
+					balanceHighlight = "";
+			}
+			let balanceCard;
+			if (this.state.data.get("focus")) {
+				balanceCard = <div className="input-support balance-card card">
+					<div className="balance-panel">
+						<p className="balance-title pod-title">
+							<span className="balance-title-text">POD</span>
+						</p>
+						<p className="balance-number pod-balance">
+							<span className="balance-number-text">
+								{this.props.activeUser.getIn(["balance", "pod"])}
+							</span>
+						</p>
+						<div className="pay-button-panel">
+							<div
+								className="pay-button pay-button-pod"
+								onMouseOver={this.highlight.bind(this, "pod")}
+								onMouseOut={this.highlight.bind(this, null)}>
+								<span className="fas fa-circle pay-icon-pod pay-button-icon"></span>
+							</div>
+							<div
+								className="pay-button pay-button-podaud"
+								onMouseOver={this.highlight.bind(this, "podaud")}
+								onMouseOut={this.highlight.bind(this, null)}>
+								<span className="fas fa-circle pay-button-icon pay-icon-aud pay-icon-right"></span>
+								<span className="fas fa-dot-circle pay-button-icon pay-icon-pod pay-icon-left"></span>
+							</div>
+						</div>
+					</div>
+					<div className="balance-panel">
+						<p className="balance-title aud-title">
+							<span className="balance-title-text">AUD</span>
+						</p>
+						<p className="balance-number aud-balance">
+							<span className="balance-number-text">
+								{this.props.activeUser.getIn(["balance", "aud"])}
+							</span>
+						</p>
+						<div className="pay-button-panel">
+							<div
+								className="pay-button pay-button-audpod"
+								onMouseOver={this.highlight.bind(this, "audpod")}
+								onMouseOut={this.highlight.bind(this, null)}>
+								<span className="fas fa-circle pay-button-icon pay-icon-pod pay-icon-right"></span>
+								<span className="fas fa-dot-circle pay-button-icon pay-icon-aud pay-icon-left"></span>	
+							</div>
+							<div
+								className="pay-button pay-button-aud"
+								onMouseOver={this.highlight.bind(this, "aud")}
+								onMouseOut={this.highlight.bind(this, null)}>
+								<span className="fas fa-circle pay-button-icon pay-icon-aud"></span>
+							</div>
+						</div>
+					</div>
+					<div className="balance-highlight">
+						<p className="highlight-text">
+							{balanceHighlight}
+						</p>
+					</div>
+				</div>
+			}
+
 			// Build post validation
 			//TODO - Allow users to "ignore" a validation
 			//		 failure and have the associated reference
 			//		 just be treated like normal text
 			//TODO - Allow users to create topics directly from
 			//		 a failed-topic-validation notification
-			const references = {
-				...this.state.data.getIn(["references", "mentions"]).toJS(),
-				...this.state.data.getIn(["references", "topics"]).toJS(),
-				...this.state.data.getIn(["references", "links"]).toJS()
-			}
-			const validation = Object.keys(references).map(k => {
+			const validation = this.state.data
+				.get("references")
+				.sort((a, b) => {
+					const aTypeOrd = refOrder[a.get("type")];
+					const bTypeOrd = refOrder[b.get("type")];
+					if (aTypeOrd > bTypeOrd) {
+						return 1
+					} else if (aTypeOrd < bTypeOrd) {
+						return -1
+					} else if (a.get("id") > b.get("id")) {
+						return 1
+					} else {
+						return -1
+					}
+				})
+				.map((r) => {
 
-				// Get reference
-				const r = references[k];
+					// Build notifications
+					let notif;
+					switch (r.get("type")) {
 
-				// Build notifications
-				let notif;
-				switch (r.type) {
+						// Surface mention validation
+						case ("mention"):
+							if (r.get("valid") === "pending") {
+								notif = <Notify
+									key={r.get("id")}
+									stage="pending"
+									title={<span className="fas fa-at notif-glyph"></span>}
+									msg={<span>
+										Validating User <strong>{r.get("id")}</strong>
+									</span>}
+									color={Settings.colors.darkGrey}
+								/>
+							} else if (r.get("valid") === "passed") {
+								notif = <Notify
+									key={r.get("id")}
+									stage="passed"
+									title={<span className="fas fa-at notif-glyph"></span>}
+									msg={<span>
+										Found user <strong>{r.get("id")}</strong>
+									</span>}
+									color={Settings.colors.green}
+								/>
+							} else {
+								notif = <Notify
+									key={r.get("id")}
+									stage="failed"
+									title={<span className="fas fa-at notif-glyph"></span>}
+									msg={<span>
+										User <strong>{r.get("id")}</strong> not found
+									</span>}
+									color={Settings.colors.red}
+								/>
+							} 
+							break;
 
-					// Surface mention validation
-					case ("mention"):
-						if (r.valid === "pending") {
-							notif = <Notify
-								key={r.id}
-								stage="pending"
-								title={<span className="fa fa-at notif-glyph"></span>}
-								msg={<span>
-									Verifying ID for User <strong>@{r.id}</strong>
-								</span>}
-								color={Settings.colors.darkGrey}
-							/>
-						} else if (r.valid === "passed") {
-							notif = <Notify
-								key={r.id}
-								stage="passed"
-								title={<span className="fa fa-at notif-glyph"></span>}
-								msg={<span>
-									Found user <strong>@{r.id}</strong>
-								</span>}
-								color={Settings.colors.green}
-							/>
-						} else {
-							notif = <Notify
-								key={r.id}
-								stage="failed"
-								title={<span className="fa fa-at notif-glyph"></span>}
-								msg={<span>
-									User <strong>@{r.id}</strong> does not exist
-								</span>}
-								color={Settings.colors.red}
-							/>
-						} 
-						break;
+						// Surface Topic validation
+						case ("topic"):
+							if (r.get("valid") === "pending") {
+								notif = <Notify
+									key={r.get("id")}
+									stage="pending"
+									title={<span className="fas fa-hashtag notif-glyph"></span>}
+									msg={<span>
+										Validating Topic <strong>{r.get("id")}</strong>
+									</span>}
+									color={Settings.colors.darkGrey}
+								/>
+							} else if (r.get("valid") === "passed") {
+								notif = <Notify
+									key={r.get("id")}
+									stage="passed"
+									title={<span className="fas fa-hashtag notif-glyph"></span>}
+									msg={<span>
+										Found topic <strong>{r.get("id")}</strong>
+									</span>}
+									color={Settings.colors.tan}
+								/>
+							} else {
+								notif = <Notify
+									key={r.get("id")}
+									stage="failed"
+									title={<span className="fas fa-hashtag notif-glyph"></span>}
+									msg={<span>
+										Topic <strong>{r.get("id")}</strong> not found
+									</span>}
+									color={Settings.colors.red}
+								/>
+							}
+							break;
 
-					// Surface Topic validation
-					case ("topic"):
-						if (r.valid === "pending") {
-							notif = <Notify
-								key={r.id}
-								stage="pending"
-								title={<span className="fa fa-hashtag notif-glyph"></span>}
-								msg={<span>
-									Verifying Topic <strong>#{r.id}</strong>
-								</span>}
-								color={Settings.colors.darkGrey}
-							/>
-						} else if (r.valid === "passed") {
-							notif = <Notify
-								key={r.id}
-								stage="passed"
-								title={<span className="fa fa-hashtag notif-glyph"></span>}
-								msg={<span>
-									Found topic <strong>#{r.id}</strong>
-								</span>}
-								color={Settings.colors.tan}
-							/>
-						} else {
-							notif = <Notify
-								key={r.id}
-								stage="failed"
-								title={<span className="fa fa-hashtag notif-glyph"></span>}
-								msg={<span>
-									Topic <strong>#{r.id}</strong> does not exist
-								</span>}
-								color={Settings.colors.red}
-							/>
-						}
-						break;
+						// Surface Link validation
+						case ("link"):
+							if (r.get("valid") === "pending") {
+								notif = <Notify
+									key={r.get("id")}
+									stage="pending"
+									title={<span className="fa fa-link notif-glyph"></span>}
+									msg={<span>
+										Validating URL <strong>{r.get("id")}</strong>
+									</span>}
+									color={Settings.colors.darkGrey}
+								/>
+							} else if (r.get("valid") === "passed") {
+								notif = <Notify
+									key={r.get("id")}
+									stage="passed"
+									title={<span className="fa fa-link notif-glyph"></span>}
+									msg={<span>
+										Found URL <strong>{r.get("id")}</strong>
+									</span>}
+									color={Settings.colors.blue}
+								/>
+							} else {
+								notif = <Notify
+									key={r.get("id")}
+									stage="failed"
+									title={<span className="fa fa-link notif-glyph"></span>}
+									msg={<span>
+										URL <strong>{r.get("id")}</strong> does not exist
+									</span>}
+									color={Settings.colors.red}
+								/>
+							}
+							break;
 
-					// Surface Link validation
-					case ("link"):
-						if (r.valid === "pending") {
-							notif = <Notify
-								key={r.id}
-								stage="pending"
-								title={<span className="fa fa-external-link-square notif-glyph"></span>}
-								msg={<span>
-									Verifying URL <strong>{r.id}</strong>
-								</span>}
-								color={Settings.colors.darkGrey}
-							/>
-						} else if (r.valid === "passed") {
-							notif = <Notify
-								key={r.id}
-								stage="passed"
-								title={<span className="fa fa-external-link-square notif-glyph"></span>}
-								msg={<span>
-									Found URL <strong>{r.id}</strong>
-								</span>}
-								color={Settings.colors.blue}
-							/>
-						} else {
-							notif = <Notify
-								key={r.id}
-								stage="failed"
-								title={<span className="fa fa-external-link-square notif-glyph"></span>}
-								msg={<span>
-									URL <strong>{r.id}</strong> does not exist
-								</span>}
-								color={Settings.colors.red}
-							/>
-						}
-						break;
+						default:
+							notif = null;
 
-					default:
-						notif = null;
-
-				}
-				return notif;
-			});
+					}
+					return notif;
+				})
+				.filter(n => n)
+				.toList();
 
 			const inputClass = (this.state.data.get("focus") ||
 				                this.state.data.get("raw") !== "") ?
 				" post-input-open" :
 				" post-input-closed";
-			const validationClass = (validation.length > 0) ?
+			const validationClass = (validation.size > 0) ?
 				" post-input-with-validations" : "";
 
 			// Calculate border color
@@ -766,7 +854,7 @@ class Send extends Component {
 				borderClass = " post-input-border-pending"
 				buttonClass = " post-input-button-pending"
 			}
-			if (validation.length === 0) {
+			if (validation.size === 0) {
 				borderClassVal = " post-validation-hide"
 			}
 
@@ -783,13 +871,12 @@ class Send extends Component {
 			}
 
 			// Build footer
-			//TODO - Change post button text color with validations
-			const costOffset = (validation.length > 0) ? ((validation.length * -2.5) - 0.15) : 0;
+			const costOffset = (validation.size > 0) ? ((validation.size * -2.5) - 0.15) : 0;
 			const footer = <div className="post-input-footer">
 				<p
 					className="post-input-cost"
 					style={{transform: "translate(0," + costOffset + "em)"}}>
-					{this.state.data.get("cost")} <span className="fa fa-database post-input-cost-icon"></span>
+					{this.state.data.get("cost")} <span className="fa fa-coins post-input-cost-icon"></span>
 				</p>
 				<button
 					className={"def-button green-button post-input-button" + buttonClass}
@@ -801,6 +888,8 @@ class Send extends Component {
 	    	// Render
 			return (
 				<div ref="send" className="input-col">
+					{balanceCard}
+					{insertCard}
 					<div
 						contentEditable="true"
 						suppressContentEditableWarning={true}

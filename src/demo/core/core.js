@@ -155,6 +155,8 @@ class Core extends Component {
 			default:
 				content = <Feed
 
+					activeUser={this.props.user}
+
 					users={this.props.records.get("users")}
 					posts={this.props.records.get("posts")}
 

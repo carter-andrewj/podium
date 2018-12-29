@@ -44,17 +44,17 @@ class ProfileCard extends Component {
 					</div>
 				</div>
 			</div>
-			<div className="usercard-bio-holder">
-				<p className="usercard-bio">
-					{this.props.user.get("bio")}
-				</p>
-			</div>
 			<div className="usercard-name-holder">
 				<p className="usercard-name">
 					{this.props.user.get("name")}
 					<span className="usercard-id">
 						@{this.props.user.get("id")}
 					</span>
+				</p>
+			</div>
+			<div className="usercard-bio-holder">
+				<p className="usercard-bio">
+					{this.props.user.get("bio")}
 				</p>
 			</div>
 			<div className="usercard-buttons">

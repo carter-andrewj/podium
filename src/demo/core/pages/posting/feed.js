@@ -123,6 +123,7 @@ class Feed extends Component {
 				<div className="send-box card">
 					<Send
 						reply={false}
+						activeUser={this.props.activeUser}
 						getProfileFromID={this.props.getProfileFromID}
 						getTopicFromID={this.props.getTopicFromID}
 						sendPost={this.props.sendPost}
@@ -142,6 +143,9 @@ class Feed extends Component {
 
 									key={"thread-" + thread.get("origin")}
 									thread={thread.get("origin")}
+
+									activeUser={this.props.activeUser}
+
 									users={this.props.users}
 									posts={thread.get("posts")}
 

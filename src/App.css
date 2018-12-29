@@ -339,7 +339,7 @@ input:focus {
     padding-top: 0.1em;
 	text-align: center;
 	line-height: 2em;
-	border-radius: 100px 100px;
+	border-radius: 1em 1em 1em 1em;
 	cursor: pointer;
 	font-family: var(--titles);
 	font-size: 105%;
@@ -517,6 +517,7 @@ input:focus {
 	width: 100%;
 	height: 100vh;
 	padding-bottom: 10%;
+	transform: scale(0.2);
 }
 
 @keyframes pulse
@@ -547,12 +548,68 @@ input:focus {
   }
 }
 
-.loader-image {
-	width: 3%;
-	margin: auto;
-	filter: drop-shadow(0 0 0.5em #888);
-	animation: pulse 2s infinite ease-in-out;
+@keyframes spinsmooth {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
 }
+
+@keyframes greenfade {
+	0%, 10% {
+		opacity: 0;
+	}
+	25% {
+		opacity: 1;
+	}
+	40%, 100% {
+		opacity: 0;
+	}
+}
+
+@keyframes redfade {
+	0%, 60% {
+		opacity: 0;
+	}
+	75% {
+		opacity: 1;
+	}
+	90%, 100% {
+		opacity: 0;
+	}
+}
+
+.loader-holder {
+	position: relative;
+	width: 0;
+	margin: auto;
+	animation: spinsmooth 1.5s infinite linear;
+}
+
+.loader-image {
+	position: absolute;
+	width: 200px;
+	height: 346px;
+	transform: translate(-100px, -173px);
+}
+
+.loader-grey {
+	filter: drop-shadow(0 0 0.5em #888);
+}
+
+.loader-green {
+	animation: greenfade 3s infinite linear;
+	transform: translate(-100px, -173px) rotate(180deg);
+}
+
+.loader-red {
+	animation: redfade 3s infinite linear;
+	transform: translate(-100px, -173px) rotate(180deg);
+}
+
+
 
 
 
@@ -932,6 +989,206 @@ input:focus {
 .send-col {
 	position: relative;
 }
+
+
+
+
+
+.input-support {
+	position: absolute;
+	display: block;
+	top: 0.5em;
+	width: 8em;
+	height: 5em;
+	padding: 0.5em;
+}
+
+.balance-card {
+	left: -8.8em;
+}
+
+.balance-panel {
+	position: relative;
+}
+
+.balance-title {
+	float: left;
+	width: 2.6em;
+	margin: 0;
+	font-family: var(--titles);
+	color: white;
+	cursor: default;
+}
+
+.pod-title {
+	background: var(--green);
+	border-radius: 0 0 1em 0;
+}
+
+.aud-title {
+	background: var(--purple);
+	border-radius: 0 1em 0 0;
+}
+
+.balance-title-text {
+	font-size: 80%;
+}
+
+.balance-number {
+	width: 3.8em;
+	text-align: center;
+	font-family: var(--titles);
+	font-weight: normal;
+	margin: 0;
+	margin-left: 2.6em;
+	line-height: 2em;
+}
+
+.balance-number-text {
+	font-size: 80%;
+}
+
+.pay-button-panel {
+	position: absolute;
+	height: 2em;
+	right: 0;
+	top: 0;
+}
+
+.pay-button {
+    position: absolute;
+    right: 0;
+    width: 1em;
+    height: 1em;
+    line-height: 1em;
+    cursor: pointer;
+    border: 0.1em solid transparent;
+}
+
+.pay-button:hover {
+	background: var(--grey);
+}
+
+.pay-button-icon {
+    font-size: 60%;
+    position: absolute;
+    right: 0.2em;
+    top: 0.25em;
+    text-align: center;
+}
+
+.pay-button-pod, .pay-button-audpod {
+	top: 0;
+}
+
+.pay-button-podaud, .pay-button-aud {
+	bottom: 0;
+}
+
+.pay-icon-pod {
+	color: var(--green);
+}
+
+.pay-icon-aud {
+	color: var(--purple);
+}
+
+.pay-icon-left {
+	text-align: left;
+}
+
+.pay-icon-right {
+	text-align: right;
+}
+
+.balance-highlight {
+	position: absolute;
+	top: 5.1em;
+	left: 0;
+	right: 0;
+	font-family: var(--titles);
+	width: 100%;
+	text-align: center;
+	white-space: nowrap;
+}
+
+.highlight-text {
+	font-size: 70%;
+	margin: 0;
+}
+
+.pod-text {
+	color: var(--pale-green);
+}
+
+.aud-text {
+	color: var(--pale-purple);
+}
+
+
+
+
+.insert-card {
+	right: -8.8em;
+}
+
+.insert-holder {
+	position: relative;
+}
+
+.insert-panel {
+	position: absolute;
+	display: block;
+	width: 2em;
+	height: 4em;
+	z-index: 2;
+}
+
+.insert-column-1 {
+	left: 0em;
+}
+
+.insert-column-2 {
+	left: 2em;
+}
+
+.insert-column-3 {
+	left: 4.45em;
+	border-left: 0.1em solid var(--grey);
+	padding-left: 0.45em;
+}
+
+.insert-button {
+	display: block;
+	width: 2em;
+	height: 2em;
+	line-height: 2em;
+	color: var(--dark-grey);
+	cursor: pointer;
+}
+
+.insert-button:hover {
+	background: var(--dark-grey);
+	color: white;
+}
+
+.insert-button-icon {
+	font-size: 110%;
+	line-height: 1.9em;
+}
+
+.insert-highlight {
+	position: absolute;
+	top: 4.6em;
+	left: 0;
+	right: 0;
+	font-family: var(--titles);
+	width: 100%;
+	text-align: center;
+	color: var(--dark-grey);
+}
+
+
 
 
 
@@ -1327,6 +1584,8 @@ input:focus {
 
 
 
+
+
 .post-sending {
 	position: relative;
 	display: block;
@@ -1400,35 +1659,25 @@ input:focus {
 .usercard {
 	width: 100%;
 	transform: translate(-1em, 0);
-	padding: 1.2em;
-	height: 15.6em;
+	padding: 1em;
 	border-radius: 4.3em 0 0 0;
 	font-size: 80%;
 }
 
 .usercard-picture {
+	float: left;
 	width: 10em;
 	height: auto;
 	border-radius: 3.5em 0 0 0;
 }
 
-.usercard-bio-holder {
-	position: absolute;
-	left: 12em;
-	top: 1.4em;
-}
-
-.usercard-bio {
-	font-size: 130%;
-	text-align: left;
+.usercard-gauges {
+	float: right;
+	width: 5em;
 }
 
 .usercard-name-holder {
-	position: absolute;
-	left: 1.4em;
-	bottom: 1.2em;
-	margin: 0;
-	line-height: 1.6em;
+	width: 100%;
 }
 
 .usercard-name {
@@ -1447,37 +1696,73 @@ input:focus {
 	cursor: default;
 }
 
+.usercard-bio-holder {
+	width: 100%;
+}
+
+.usercard-bio {
+	font-family: var(--text);
+	font-size: 100%;
+	text-align: justify;
+}
+
 .usercard-buttons {
-	position: absolute;
-	left: 50%;
+	width: 100%;
 	right: 0.8em;
 	bottom: 0.8em;
 }
 
 .usercard-button {
-	display: block;
-	float: right;
-	min-width: 0;
+	display: inline-block;
+	font-size: 120%;
+	padding: 0;
+	width: 2em;
+	height: 2em;
+	line-height: 2em;
+	color: var(--grey);
+	border: 0.1em solid transparent;
 }
 
-.profile-button {
-	color: var(--green);
-	border-color: var(--green);
+.usercard-button-icon {
+	text-align: center;
 }
 
-.profile-button:hover {
+.usercard-profile-button {
+
+}
+
+.usercard-profile-button:hover {
 	color: white;
 	background: var(--green);
 }
 
-.follow-button {
-	color: var(--blue);
-	border-color: var(--blue);
+.usercard-follow-button {
+
 }
 
-.follow-button:hover {
+.usercard-follow-button:hover {
 	color: white;
 	background: var(--blue);
+}
+
+.usercard-unfollow-button {
+	color: white;
+	background: var(--blue);
+	border: 0.1em solid var(--blue);
+}
+
+.usercard-unfollow-button:hover {
+	color: var(--blue);
+	background: white;
+}
+
+.usercard-report-button {
+
+}
+
+.usercard-report-button:hover {
+	color: white;
+	background: var(--red);
 }
 
 

@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import { Map, fromJS } from 'immutable';
 
 import Search from './search';
-import NewTopic from 'demo/core/pages/posting/topics/newtopic';
+import NewTopic from 'demo/core/pages/posting/references/topics/newtopic';
 
 
 

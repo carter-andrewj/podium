@@ -163,6 +163,7 @@ export function markupPost(post) {
 			return [{
 				word: String.fromCharCode(8203),
 				type: "return",
+				reference: false,
 				length: 1,
 				line: Math.floor(l / 2.0),
 				depth: depth,
@@ -198,6 +199,7 @@ export function markupPost(post) {
 					return [{
 						word: "\t",
 						type: "tab",
+						reference: false,
 						length: 1,
 						line: Math.floor((l + 1.0) / 2.0),
 						depth: depth,
@@ -237,6 +239,7 @@ export function markupPost(post) {
 							return {
 								word: String.fromCharCode(32),
 								type: "word",
+								reference: false,
 								length: 1,
 								line: Math.floor((l + 1.0) / 2.0),
 								depth: depth,
@@ -250,6 +253,7 @@ export function markupPost(post) {
 							return {
 								word: word,
 								type: "topic",
+								reference: true,
 								length: word.length,
 								line: Math.floor((l + 1.0) / 2.0),
 								depth: depth,
@@ -263,6 +267,7 @@ export function markupPost(post) {
 							return {
 								word: word,
 								type: "mention",
+								reference: true,
 								length: word.length,
 								line: Math.floor((l + 1.0) / 2.0),
 								depth: depth,
@@ -279,6 +284,7 @@ export function markupPost(post) {
 							return {
 								word: word,
 								type: "link",
+								reference: true,
 								length: word.length,
 								line: Math.floor((l + 1.0) / 2.0),
 								depth: depth,
@@ -291,6 +297,7 @@ export function markupPost(post) {
 						return {
 							word: word,
 							type: "word",
+							reference: false,
 							length: word.length,
 							line: Math.floor((l + 1.0) / 2.0),
 							depth: depth,

@@ -263,6 +263,7 @@ class Post extends Component {
 		if (this.state.data.get("reply")) {
 			reply = <div className="post-reply">
 				<Send
+					activeUser={this.props.activeUser}
 					getProfileFromID={this.props.getProfileFromID}
 					getTopicFromID={this.props.getTopicFromID}
 					sendPost={this.props.sendPost}

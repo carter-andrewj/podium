@@ -24,6 +24,8 @@ class Thread extends Component {
 						key={"post-" + post.get("address")}
 						index={post.get("depth")}
 
+						activeUser={this.props.activeUser}
+
 						thread={this.props.origin}
 						user={this.props.users.get(post.get("author"))}
 						post={post}

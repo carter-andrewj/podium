@@ -45,8 +45,8 @@ const emptyUser = Map(fromJS({
 	alerts: 0,
 	integrity: 0.5,
 	balance: {
-		pdm: 0,
-		dpm: 0,
+		pod: 0,
+		aud: 0,
 		rad: 0
 	},
 	emblems: []
@@ -970,17 +970,6 @@ class Demo extends Component {
 							p :
 							p.mergeDeep(Map(fromJS(post)))
 					);
-					// (p) => {
-					// 	if (p) {
-					// 		if (post.type === "post-ref") {
-					// 			return p;
-					// 		} else {
-					// 			return p.mergeDeep(Map(fromJS(post)))
-					// 		}
-					// 	} else {
-					// 		return Map(fromJS(post))
-					// 	}
-					// });
 			if (post.author === state.getIn(["user", "address"])) {
 				newState = newState
 					.updateIn(["user", "posts"], (p) => p += 1)
@@ -990,6 +979,8 @@ class Demo extends Component {
 			}
 			return newState;
 		});
+
+		//TODO - Load original if post was promoted
 
 		// Retreive the post content
 		this.getPost(post.address);
@@ -1761,8 +1752,8 @@ class Demo extends Component {
 
 		let demoMenu = <div
 			className={(this.state.data.get("demomenu")) ? 
-				"demo-menu card demo-menu-open" :
-				"demo-menu card demo-menu-closed"}>
+				"card demo-menu demo-menu-open" :
+				"card demo-menu demo-menu-closed"}>
 			<p className="demo-menu-title">
 				Demo Menu
 			</p>
@@ -1789,14 +1780,14 @@ class Demo extends Component {
 					endTask={this.endTask}
 				/>
 				{demoMenu}
-					<button
+					<div
 						className="red-button demo-button card"
 						onClick={this.toggleDemoMenu.bind(this)}>
 						{(this.state.data.get("demomenu")) ?
 							<span className="fas fa-times demo-button-icon"></span> :
 							<span className="fas fa-magic demo-button-icon"></span>
 						}
-					</button>
+					</div>
 			</div>
 		);
 	}

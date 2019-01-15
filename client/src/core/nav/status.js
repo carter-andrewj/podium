@@ -47,11 +47,18 @@ class Status extends Component {
 						onClick={this.props.setCoreMode.bind(this, "profile")}
 						onMouseOver={this.hoverStatus.bind(this, "profile")}
 						onMouseOut={this.hoverStatus.bind(this, "none")}>
-						<img
-							className="menu-profile-picture"
-							src={this.props.profile.get("picture")}
-							alt=""
-						/>
+						{(this.props.profile) ?
+							<img
+								className="menu-profile-picture"
+								src={this.props.profile.get("picture")}
+								alt=""
+							/> :
+							<img
+								className="menu-profile-picture"
+								src="./images/profile-placeholder.png"
+								alt=""
+							/>
+						}
 						<div className={(over === "profile") ? ttOn : ttOff}>
 							<p className="menu-tooltip-text">profile</p>
 						</div>

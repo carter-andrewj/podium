@@ -397,6 +397,31 @@ export function timeform(t) {
 
 
 
+export function formatNumber(num) {
+	if (num < 1000) {
+		return num
+	} else if (num < 1000) {
+		return Math.round(num / 10.0) / 100 + "k"
+	} else if (num < 10000) {
+		return Math.round(num / 100.0) / 10 + "k"
+	} else if (num < 100000) {
+		return Math.round(num / 1000.0) + "k"
+	} else if (num < 1000000) {
+		return Math.round(num / 10000.0) / 100 + "M"
+	} else if (num < 10000000) {
+		return Math.round(num / 100000.0) / 10 + "M"
+	} else if (num < 100000000) {
+		return Math.round(num / 1000000.0) + "M"
+	} else if (num < 1000000000) {
+		return Math.round(num / 10000000.0) / 100 + "Bn"
+	} else if (num < 10000000000) {
+		return Math.round(num / 100000000.0) / 10 + "Bn"
+	} else if (num < 100000000000) {
+		return Math.round(num / 1000000000.0) + "Bn"
+	}
+}
+
+
 
 
 

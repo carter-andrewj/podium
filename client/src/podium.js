@@ -1,12 +1,14 @@
 import React, { Component } from 'react';
 import { fromJS, Map } from 'immutable';
-import _ from 'lodash';
+//import _ from 'lodash';
 
-import { radixUniverse, RadixUniverse, //RadixLogger,
-		 RadixSimpleIdentity, RadixIdentityManager,
-		 RadixKeyStore, RadixTransactionBuilder } from 'radixdlt';
+// import { radixUniverse, RadixUniverse, //RadixLogger,
+// 		 RadixSimpleIdentity, RadixIdentityManager,
+// 		 RadixKeyStore, RadixTransactionBuilder } from 'radixdlt';
 
-import Channel from 'utils';
+import Podix from './module';
+
+//import Channel from 'utils';
 import Settings from 'settings';
 
 import Lobby from './lobby/lobby';
@@ -15,6 +17,8 @@ import Loading from './core/widgets/loading';
 import Tasks from './core/widgets/tasks/tasks';
 
 
+
+let podium;
 
 const emptyRecs = Map(fromJS({
 	posts: {},
@@ -57,6 +61,7 @@ class Podium extends Component {
 
 	constructor() {
 		super()
+
 		this.state = {
 			data: Map(fromJS({
 
@@ -66,38 +71,21 @@ class Podium extends Component {
 				mode: "lobby",
 				settings: Settings,
 
-				podium: {},
 				user: {},
 				records: emptyRecs,
 
-				tasks: {},
-				flags: {},
-				timers: {},
-				channels: {}
+				tasks: {}
 
 			}))
 		}
 
 		this.setMode = this.setMode.bind(this);
 
-		this.setFlag = this.setFlag.bind(this);
-		this.clearFlag = this.clearFlag.bind(this);
-
-		this.newTimer = this.newTimer.bind(this);
-		this.resetTimer = this.resetTimer.bind(this);
-		this.stopTimer = this.stopTimer.bind(this);
-
 		this.newTask = this.newTask.bind(this);
 		this.stepTask = this.stepTask.bind(this);
 		this.completeTask = this.completeTask.bind(this);
 		this.endTask = this.endTask.bind(this);
 		this.failTask = this.failTask.bind(this);
-
-		this.sendRecord = this.sendRecord.bind(this);
-		this.getHistory = this.getHistory.bind(this);
-		this.getLatest = this.getLatest.bind(this);
-		this.openChannel = this.openChannel.bind(this);
-		this.closeChannel = this.closeChannel.bind(this);
 
 		this.signIn = this.signIn.bind(this);
 		this.signOut = this.signOut.bind(this);
@@ -106,20 +94,14 @@ class Podium extends Component {
 		this.receivePost = this.receivePost.bind(this);
 		this.receiveAlert = this.receiveAlert.bind(this);
 		this.receiveFollowing = this.receiveFollowing.bind(this);
-		this.receiveFollower = this.receiveFollower.bind(this);
 
 		this.getProfile = this.getProfile.bind(this);
-		this.getProfileFromID = this.getProfileFromID.bind(this);
-		// this.updateProfile = this.updateProfile.bind(this);
-		// this.updateID = this.updateID.bind(this);
 
 		this.followUser = this.followUser.bind(this);
 		this.unfollowUser = this.unfollowUser.bind(this);
 
 		this.createTopic = this.createTopic.bind(this);
-		this.getTopicIndex = this.getTopicIndex.bind(this);
 		this.getTopic = this.getTopic.bind(this);
-		this.getTopicFromID = this.getTopicFromID.bind(this);
 		this.deleteTopic = this.deleteTopic.bind(this);
 
 		this.sendPost = this.sendPost.bind(this);
@@ -145,51 +127,11 @@ class Podium extends Component {
 
 	componentWillMount() {
 
-		// Offline Mode
-		if (this.state.data.get("offline")) {
+		// Initialize podium module
+		podium = new Podix();
 
-			// Notify user
-			console.log("RUNNING IN OFFLINE MODE")
-
-			// Set offline state
-			this.updateState(state => state
-				.set("podium", Map({ balance: 0 }))
-			);
-
-		} else {
-
-			// Get podium config from server
-			fetch("http://ec2-3-84-124-198.compute-1.amazonaws.com/config")
-				.then(response => response.json())
-				.then(config => {
-
-					// Connect to Radix universe
-					radixUniverse.bootstrap(RadixUniverse.ALPHANET);
-					console.log("CONNECTING TO RADIX");
-
-					// Mute radix console updates
-					//RadixLogger.setLevel('error')
-
-					// Get Podium root account
-					// const rootAccount = Channel.master();
-					// const rootIdentity = new RadixSimpleIdentity(
-					// 	RadixKeyPair.fromAddress(rootAccount.getAddress())
-					// );
-
-					// Open root account connection
-					// rootAccount.openNodeConnection()
-
-					// Initialize state
-					this.updateState(state => state
-						.set("podium", Map({
-								id: config.ApplicationID,
-							})
-						)
-					)
-
-				});
-
-		}
+		//TODO - Handle errors in radix setup, lack
+		//		 off connection, etc...
 
 	}
 
@@ -203,78 +145,6 @@ class Podium extends Component {
 		this.updateState(state => state.set("mode", mode));
 	}
 
-
-	setFlag(flag) {
-		if (!this.state.data.getIn(["flags", flag])) {
-			this.updateState(state => state
-				.setIn(["flags", flag], true)
-			);
-		}
-	}
-
-	clearFlag(flag) {
-		this.updateState(state => state
-			.setIn(["flags", flag], false)
-		);
-	}
-
-
-
-
-// TIMERS
-
-	newTimer(id, lifetime, callback) {
-
-		// Start timer
-		const timer = setTimeout(() => {
-
-			// Run callback
-			callback();
-
-			// Delete record of this timer
-			this.updateState(state => state
-				.deleteIn(["timers", id])
-			);
-
-		}, lifetime);
-
-		// Store timer
-		this.updateState(state => state
-			.setIn(["timers", id], Map({
-				timer: timer,
-				callback: callback,
-				lifetime: lifetime
-			}))
-		);
-
-	}
-
-
-	resetTimer(id) {
-
-		// Get timer
-		var timer = this.state.data.getIn(["timers", id]);
-
-		// Stop timer
-		clearTimeout(timer.get("timer"));
-
-		// Recreate timer
-		this.newTimer(id, timer.get("callback"), timer.get("lifetime"));
-
-	}
-
-
-	stopTimer(id) {
-
-		// Stop timer
-		clearTimeout(this.state.data.getIn(["timers", id, "timer"]));
-
-		// Delete record of this timer
-		this.updateState(state => state
-			.deleteIn(["timers", id])
-		);
-
-	}
 
 
 
@@ -329,526 +199,56 @@ class Podium extends Component {
 
 
 
-
-// RADIX UTILITIES
-
-	sendRecord(accounts, payload, taskID,
-			   identity = this.state.data.getIn(["user", "identity"]),
-			   encrypt = false) {
-		return new Promise((resolve) => {
-			if (accounts.length === 0) {
-				resolve();
-			} else {
-				RadixTransactionBuilder
-					.createPayloadAtom(
-						accounts,
-						this.state.data.getIn(["podium", "id"]),
-						JSON.stringify(payload),
-						encrypt
-					)
-					.signAndSubmit(identity)
-					.subscribe({
-						next: async status => {
-							await this.stepTask(taskID);
-						},
-						error: error => {
-							this.failTask(taskID, error);
-							resolve(error);
-						},
-						complete: async () => {
-							await this.stepTask(taskID);
-							resolve();
-						}
-					});
-			}
-		});
-	}
-
-
-	async getHistory(account, lifetime=5) {
-
-		// Pulls all current values from a radix
-		// -account- and closes the channel connection.
-
-		// Open the account connection
-		account.openNodeConnection();
-
-		// Connect to account data
-		const stream = account.dataSystem
-			.getApplicationData(this.state.data.getIn(["podium", "id"]))
-			.timeoutWith(lifetime * 1000, Promise.resolve(false));
-
-		// Fetch the data
-		return new Promise((resolve) => {
-			const history = [];
-			const channel = stream
-				.subscribe({
-					//TODO - Rewrite to pull until up-to-date once
-					//		 radix provides the required flag.
-					//		 Currently, this just collates all
-					//		 input until timeout.
-					next: item => {
-						if (!item) {
-							channel.unsubscribe();
-							resolve(history);
-						} else {
-							history.push(JSON.parse(item.data.payload));
-						}
-					},
-					error: error => {
-						channel.unsubscribe();
-						console.error(error)
-						resolve([]);
-					}
-				});
-		});
-
-		// TODO - Close node connection
-
-	}
-
-
-	getLatest(account, lifetime=10) {
-
-		// Returns the most recent payload among all
-		// data for the provided -account-.
-
-		// Get account history
-		return new Promise((resolve) => {
-			this.getHistory(account, lifetime)
-				.then(history => {
-					if (history.constructor === Array && history.length > 0) {
-						resolve(history[history.length - 1]);
-					} else if (Object.keys(history).length > 0) {
-						resolve(history);
-					} else {
-						resolve({});
-					}
-				});
-		});
-
-	}
-
-
-	openChannel(account, callback, onError=null, lifetime=0) {
-
-		// Creates and manages a subscription to new data
-		// updates for a given -account-, running
-		// -callback- whenever a new item is received.
-		// Will run -onError- callback in case of error.
-		// Will timeout after -lifetime- ms of inactivity,
-		// or will remain open indefinitely if -lifetime-
-		// is not provided or set to 0.
-
-		//TODO - Close channels after a period of inactivity
-		//		 and reopen automatically on resume.
-
-		// Check channel to this account is not already open
-		const address = account.getAddress();
-		if (address in this.state.data.get("channels")) {
-			console.error("Channel already open: ", address);
-			return;
-		}
-
-		// Connect to the account
-		account.openNodeConnection();
-
-		// Initialize data request
-		const stream = account.dataSystem.applicationDataSubject;
-
-		// Set up timeout, if required
-		let timer;
-		if (lifetime > 0) {
-			timer = this.newTimer(address, lifetime, (a) => {
-				this.closeChannel(a);
-				console.warn("Channel " + address + " timed out.");
-			});
-		}
-
-		// Subscribe to data stream
-		const channel = stream.subscribe({
-			next: async item => {
-
-				// Reset timeout
-				if (lifetime > 0) { this.resetTimer(address); }
-
-				// Run callback
-				const result = JSON.parse(item.data.payload);
-				callback(result);
-
-			},
-			error: error => {
-
-				// Run callback
-				if (typeof(onError) === "function") { onError(error); }
-
-				// Close channel
-				this.closeChannel(address);
-
-				// Report
-				console.error("Error on channel " + address + ":", error);
-
-			}
-		});
-
-		// Log open channel
-		this.updateState(state => state
-			.setIn(["channels", address], Map({
-				account: account,
-				channel: channel,
-				lifetime: timer
-			}))
-		);
-
-		// Return the channel
-		return channel;
-
-	}
-
-
-	closeChannel(address) {
-
-		// Closes and cleans up a channel created by
-		// openChannel
-
-		// Stop channel timeout
-		if (this.state.data.getIn(["channels", address, "timer"])) {
-			this.stopTimer(address);
-		}
-
-		// Unsubscribe from channel
-		this.state.data
-			.getIn(["channels", address, "channel"])
-			.unsubscribe();
-
-		// Remove record from state
-		this.updateState(state => state
-			.deleteIn(["channels", address])
-		);
-
-		//TODO - Close node connection
-
-	}
-
-
-
-
 // ACTIVE USER MANAGEMENT
 
-	async registerUser(id, pw, name) {
-
-		// Registers a new podium user by storing their
-		// radix keypair and profile information, while
-		// adding them to the public user roster.
-
-		//TODO - Require ID and pw to obey certain rulesets
-
-		// Switch to loading state
-		this.setMode("loading");
-
-		// Log progress
-		const taskID = "register";
-		await this.newTask(taskID, "Registering @" + id, 44);
-
-		// Offline mode
-		if (this.state.data.get("offline")) {
-
-			// Fake task completion
-			for (let i = 0; i < 32; i++) {
-				await this.stepTask(taskID);
-				await new Promise(resolve => setTimeout(resolve, 100));
-			}
-			this.completeTask(taskID);
-
-			// Store user
-			const address = "offlineaddress" + id
-			this.updateState(state => state
-				.setIn(["records", "users", address], Map({
-					record: "user",
-					type: "profile",
-					id: id,
-					name: name,
-					bio: "I am a normal human person.",
-					picture: "./images/profile-placeholder.png",
-					created: (new Date()).getTime(),
-					address: address
-				}))
-			);
-
-			// Sign-in
-			this.signIn(id, pw);
-
-		} else {
-
-			// Create user identity
-			const identityManager = new RadixIdentityManager();
-			const identity = identityManager.generateSimpleIdentity();
-			const address = identity.account.getAddress();
-
-			// Generate user public record
-			const profileAccount = Channel.forProfileOf(address);
-			const profilePayload = {
-				record: "user",
-				type: "profile",
-				id: id,
-				name: name,
-				bio: "I am a normal human person.",
-				picture: "./images/profile-placeholder.png",
-				created: (new Date()).getTime(),
-				address: address
-			}
-
-			// Generate user POD account
-			const podAccount = Channel.forPODof(address);
-			const podPayload = {
-				pod: 500,
-				on: (new Date()).getTime(),
-				from: ""
-			}
-
-			// Generate user integrity record
-			const integrityAccount = Channel.forIntegrityOf(address);
-			const integrityPayload = {
-				i: 0.5,
-				on: (new Date()).getTime(),
-				from: ""
-			}
-
-			// Generate record of this user in the public index
-			const rosterAccount = Channel.forUserRoster();
-			const rosterPayload = {
-				record: "user",
-				type: "reference",
-				address: address,
-				id: id,
-				created: (new Date()).getTime(),
-			};
-
-			// Generate record of this user's address owning this ID
-			const ownershipAccount = Channel.forProfileWithID(id);
-			const ownershipPayload = {
-				id: id,
-				address: address
-			};
-
-			// Encrypt keypair
-			const keyStore = Channel.forKeystoreOf(id, pw);
-			RadixKeyStore.encryptKey(identity.keyPair, pw)
-				.then(async (encryptedKey) => {
-
-					// Log progress
-					await this.stepTask(taskID);
-
-					// Store registration records
-					this.sendRecord([keyStore], encryptedKey, taskID, identity)
-						.then(await this.sendRecord([profileAccount], profilePayload, taskID, identity))
-						.then(await this.sendRecord([podAccount], podPayload, taskID, identity))
-						.then(await this.sendRecord([integrityAccount], integrityPayload, taskID, identity))
-						.then(await this.sendRecord([rosterAccount], rosterPayload, taskID, identity))
-						.then(await this.sendRecord([ownershipAccount], ownershipPayload, taskID, identity))
-						//.then(await this.spendPOD(-10, taskID, identity))
-						.then(() => {
-							this.completeTask(taskID);
-							this.signIn(id, pw);
-						});
-
-				})
-				.catch((error) => {
-					this.failTask(taskID, error);
-				});
-
-			}
-
-		}
+	async registerUser(
+			id,
+			pw,
+			name,
+			bio,
+			picture
+		) {
+		return new Promise((resolve, reject) => {
+			podium
+				.createUser(id, pw, name, bio, picture, true)
+				.then(result => resolve(this.initSession.bind(this)))
+				.catch(error => reject(error))
+		});
+	}
 
 
 	async signIn(id, pw) {
-
 		//TODO - Allow user to cache encrypted key locally
 		//		 for faster sign-in
-		
 		//TODO - Sign in before finding all followers, etc..
+		return new Promise((resolve, reject) => {
+			podium
+				.setUser(id, pw)
+				.then(result => resolve(this.initSession.bind(this)))
+				.catch(error => reject(error))
+		});
+	}
 
-		// Enter loading mode
-		this.setMode("loading");
 
-		// Log progress
-		await this.newTask("signin", "Signing In", 8)
+	initSession() {
 
-		// Offline Mode
-		if (this.state.data.get("offline")) {
+		// Get account for this user identity
+		const address = podium.user.account.getAddress();
 
-			// Fake task completion
-			for (let i = 0; i < 8; i++) {
-				await this.stepTask("signin");
-				await new Promise(resolve => setTimeout(resolve, 100));
-			}
-			this.completeTask("signin");
+		// Store in state
+		this.updateState(state => state
+			.set("mode", "core")
+			.set("user", emptyUser)
+			.setIn(["user", "address"], address)
+		);
 
-			// Set active user
-			this.updateState(state => state
-				.set("user", emptyUser)
-				.setIn(["user", "address"], "offlineaddress" + id)
-			);
+		// Load profile data
+		this.getProfile(address)
 
-			// Enter app
-			this.setMode("core");
-
-		} else {
-
-			// Load keypair from keystore
-			const keyStore = Channel.forKeystoreOf(id, pw);
-			this.getLatest(keyStore, 20)
-				.then(async (encryptedKey) => {
-
-					//TODO - Handle an empty value for -encryptedKey-
-					// 		 (indicates wrong id/pw)
-
-					// Log progress
-					await this.stepTask("signin");
-
-					// Decrypt keys
-					RadixKeyStore.decryptKey(encryptedKey, pw)
-				    	.then(async (keyPair) => {
-
-				    		// Log progress
-				    		await this.stepTask("signin");
-
-				    		// Establish user identity from keypair
-							const identity = new RadixSimpleIdentity(keyPair);
-
-							// Get account for this user identity
-							const account = identity.account;
-							const address = account.getAddress();
-
-							// Store in state
-							this.updateState(state => state
-								.set("user", emptyUser)
-								.setIn(["user", "identity"], identity)
-								.setIn(["user", "address"], address)
-							);
-
-							// Load profile data
-							const profile = new Promise((resolve) => {
-								this.getProfile(address)
-									.then(profile => {
-										this.stepTask("signin");
-										resolve(true);
-									});
-							});
-						
-							// Load account posts
-							const posts = new Promise((resolve) => {
-								const postChannel = Channel.forPostsBy(address);
-								this.getHistory(postChannel)
-									.then(async postHistory => {
-
-										//TODO - Load only the most recent X posts,
-										//		 once Radix allows for this
-
-										// Unpack previous posts
-										postHistory.forEach(post => {
-											this.receivePost(post);
-										});
-
-										// Listen for new posts
-										this.openChannel(postChannel, this.receivePost);
-
-										// Clean up
-										await this.stepTask("signin");
-										resolve(true);
-
-									});
-							});
-							
-							// Load account alerts
-							const alerts = new Promise((resolve) => {
-								const alertChannel = Channel.forAlertsTo(address);
-								this.getHistory(alertChannel)
-									.then(async alertHistory => {
-
-										// Unpack previous alerts
-										alertHistory.forEach(alert => {
-											this.receiveAlert(alert);
-										});
-
-										//TODO - Step back through alerts to
-										// 		determine which are old and which
-										// 		have yet to be seen
-
-										// Listen for new alerts
-										this.openChannel(alertChannel, this.receiveAlert);
-										
-										// Clean up
-										await this.stepTask("signin");
-										resolve(true);
-
-									});
-							});
-
-							// Load account following users
-							const following = new Promise((resolve) => {
-								const followingChannel = Channel.forFollowsBy(address);
-								this.getHistory(followingChannel)
-									.then(async followingHistory => {
-
-										// Unpack users currently being followed
-										followingHistory.forEach(follow => {
-
-											// Store follower record
-											this.receiveFollowing(follow);
-
-											//TODO - Subscribe to posts from each
-											//		follower
-
-										});
-
-										// Listen for new follows
-										this.openChannel(followingChannel, this.receiveFollowing);
-
-										// Clean up
-										await this.stepTask("signin");
-										resolve(true);
-
-									});
-							});
-
-							// Load account followers
-							const followers = new Promise((resolve) => {
-								const followerChannel = Channel.forFollowing(address);
-								this.getHistory(followerChannel)
-									.then(async followerHistory => {
-
-										// Unpack current followers
-										followerHistory.forEach(follower => {
-											this.receiveFollower(follower);
-										});
-
-										// Listen for new followers
-										this.openChannel(followerChannel, this.receiveFollower);
-										
-										// Clean Up
-										await this.stepTask("signin");
-										resolve(true);
-
-									});
-							});
-
-							// Wait for tasks to complete
-							Promise.all([profile, posts, alerts, following, followers])
-								.then((results) => {
-									//TODO - Catch errors above and return into
-									//		 the -results- before handling here.
-									this.completeTask("signin");
-									this.setMode("core");
-								});
-
-						})
-						.catch((error) => { this.failTask("signin", error); });
-
-				});
-
-		}
+		// Load user's posts and alerts
+		podium.listenPosts(address, this.receivePost)
+		podium.listenAlerts(address, this.receiveAlert)
+		podium.listenFollow(address, this.receiveFollowing)
 
 	}
 
@@ -868,26 +268,19 @@ class Podium extends Component {
 
 	receivePost(post) {
 
-		console.log("POST:", post);
-
 		// Add post record to state
-		post.received = (new Date()).getTime();
-		post.pending = false;
+		post.set("pending", false);
 		this.updateState(state => {
 			var newState = state
-				.updateIn(["records", "posts", post.address],
+				.updateIn(["records", "posts", post.get("address")],
 					(p) => (!p) ?
-						Map(fromJS(post)) :
-						(post.type === "post-ref") ?
-							p :
-							p.mergeDeep(Map(fromJS(post)))
+						post : (post.get("type") === "post-ref") ?
+							p : p.mergeDeep(post)
 					);
-			if (post.author === state.getIn(["user", "address"])) {
+			if (post.get("author") === state.getIn(["user", "address"])) {
 				newState = newState
 					.updateIn(["user", "posts"], (p) => p += 1)
 					.updateIn(["user", "pending"], (p) => p -= 1)
-					.setIn(["records", "posts", post.address, "feed"],
-						"owned");
 			}
 			return newState;
 		});
@@ -895,7 +288,7 @@ class Podium extends Component {
 		//TODO - Load original if post was promoted
 
 		// Retreive the post content
-		this.getPost(post.address);
+		this.getPost(post.get("address"));
 
 	}
 
@@ -903,13 +296,13 @@ class Podium extends Component {
 	receiveAlert(alert) {
 
 		// Add alert record to state
-		alert.received = (new Date()).getTime();
 		this.updateState(state => state
 			.updateIn(["user", "alerts"], (v) => v += 1)
-			.updateIn(["records", "alerts", alert.address],
+			.updateIn(["records", "alerts", alert.get("address")],
 				(a) => (a) ?
-					a.mergeDeep(Map(fromJS(alert))) :
-					Map(fromJS(alert)))
+					a.mergeDeep(alert) :
+					alert
+			)
 		);
 
 		//TODO - Pre-emptively load alert subject matter
@@ -922,47 +315,25 @@ class Podium extends Component {
 		//TODO - Validate relation record for this follower record
 
 		// Add record to state
-		following.received = (new Date()).getTime();
 		this.updateState(state => state
 			.updateIn(["user", "following"], (v) => v += 1)
-			.updateIn(["records", "following", following.address],
+			.updateIn(["records", "following", following.get("address")],
 				(f) => (f) ?
-					f.mergeDeep(Map(fromJS(following))) :
-					Map(fromJS(following)))
-			.setIn(["records", "users", following.address, "following"],
+					f.mergeDeep(following) :
+					following
+			)
+			.setIn(["records", "users", following.get("address"), "following"],
 				   true)
 		);
 
 		// Get the user's profile info
-		this.getProfile(following.address);
+		this.getProfile(following.get("address"));
 
 		// Subscribe for posts from this user
-		this.openChannel(
-			Channel.forPostsBy(following.address),
-			(post) => {
-				post.feed = "following";
-				this.receivePost(post);
-			}
-		);
-
-	}
-
-
-	receiveFollower(follower) {
-
-		//TODO - Validate relation record for this follower record
-
-		// Add record to state
-		follower.received = (new Date()).getTime();
-		this.updateState(state => state
-			.updateIn(["user", "followers"], (v) => v += 1)
-			.updateIn(["records", "followers", follower.address],
-				(f) => (f) ?
-					f.mergeDeep(Map(fromJS(follower))) :
-					Map(fromJS(follower)))
-			.setIn(["records", "users", follower.address, "follower"],
-				   true)
-		);
+		podium.listenPosts(
+			following.get("address"),
+			this.receivePost
+		)
 
 	}
 
@@ -971,86 +342,55 @@ class Podium extends Component {
 
 // USERS
 
-	async getProfile(address, store=true) {
-		let result;
-		if (this.state.data.get("offline")) {
-			result = this.state.data
-				.getIn(["records", "users", address]);
-		} else {
-			result = new Promise((resolve) => {
+	async getProfile(target, id=false, store=true) {
 
-				//TODO - handle multiple simultaneous requests
-				//		 for the same profile without multiple
-				//		 calls to the network
-
-				//TODO - load active user's affinity with this
-				//		 newly loaded user
+		return new Promise((resolve, reject) => {
 
 				// Check if profile has already been stored
-				const current = this.state.data
-					.getIn(["records", "users", address]);
-				if (current) { resolve(current); }
+				let current;
+				if (id) {
+					current = this.state.data
+						.getIn(["records", "users"])
+						.filter((user) => user.get("id") === target)
+						.first()
+					if (current.size > 0) { resolve(current) }
+				} else {
+					current = this.state.data
+						.getIn(["records", "users", target]);
+					if (current) { resolve(current) }
+				}
 
 				// Retrieve the latest profile information for the
 				// provided address
-				this.getLatest(Channel.forProfileOf(address))
+				podium
+					.fetchProfile(target, id)
 					.then(profile => {
 
-						// Add this profile to the app state
-						// or return the result
-						profile.received = (new Date()).getTime();
+						//TODO - Load integrity and balances for this user
+						profile.set("integrity", 0.5);
+						profile.set("affinity", 0.5);
+						profile.set("pod", 0);
+						profile.set("aud", 0);
+
+						// Add this profile to the app state or return the result
 						if (store) {
 							this.updateState(state => state
-								.updateIn(["records", "users", address],
+								.updateIn(["records", "users", profile.get("address")],
 									(u) => (u) ? 
-										u.mergeDeep(Map(fromJS(profile))) :
-										Map(fromJS(profile))),
-								() => { resolve(Map(fromJS(profile))); }
+										u.mergeDeep(profile) :
+										profile
+								),
+								() => { resolve(profile); }
 							);
 						} else {
-							resolve(Map(profile));
+							resolve(profile);
 						}
 
-					});
+					})
+					.catch(error => reject(error));
 
 			});
-		}
-		return result
-	}
 
-
-	async getProfileFromID(id, store=false) {
-		let result;
-		if (this.state.data.get("offline")) {
-			result = this.state.data
-				.getIn(["records", "users", "offlineaddress" + id]);
-		} else {
-			result = new Promise((resolve) => {
-
-				// Check if profile has already been stored
-				const user = this.state.data
-					.getIn(["records", "users"])
-					.filter((user) => user.get("id") === id)
-					.first();
-				if (user) { resolve(user); }
-
-				this.getLatest(Channel.forProfileWithID(id))
-					.then(item => {
-						if (_.isEmpty(item)) {
-							resolve(false);
-						} else {
-							//TODO - This is needlessly making the
-							//		 same request twice. Once here
-							//		 and again in getProfile.
-							this.getProfile(item.address, store)
-								.then(profile => {
-									resolve(profile);
-								});
-						}
-					});
-			});
-		}
-		return result;
 	}
 
 
@@ -1075,182 +415,70 @@ class Podium extends Component {
 		//		by the articles to which they refer and by the
 		//		parent sites.
 
-		// Offline mode
-		if (this.state.data.get("offline")) {
-
-			// Fake post address
-			const postAddress = "offlinepost" +
-				this.state.data.getIn(["user", "address"]) +
-				this.state.data.getIn(["user", "posts"]);
-
-			// Fake task
-			const taskID = "posting-" + postAddress;
-			await this.newTask(taskID, "Sending Post", 18);
-			for (let i = 0; i < 18; i++) {
-				await this.stepTask(taskID);
-				await new Promise(resolve => setTimeout(resolve, 100));
-			}
-			this.completeTask(taskID);
-
-			// Store post
-			this.updateState(state => state
-				.updateIn(["user", "posts"], (v) => v += 1)
-				.setIn(["records", "posts", postAddress], Map({
-					record: "post",
-					type: "post",		// origin, amendment, retraction
-					content: content,
-					address: postAddress,
-					author: state.getIn(["user", "address"]),
-					parent: null,			// address of post being replied to
-					origin: postAddress,	// address of first post in thread
-					depth: 0,
-					created: (new Date()).getTime()
-				}))
-			);
-
-		} else {
-
-			// Generate post ID
-			const userAddress = this.state.data.getIn(["user", "address"]);
-			//const postAccount = Channel.forNextPostBy(this.state.data.get("user"));
-			const postAccount = Channel.forNewPost(content);
-			const postAddress = postAccount.getAddress();
-
-			// Create new task
-			const taskID = "posting-" + postAddress;
-			await this.newTask(taskID, "Sending Post", 18);
-
-			// Get timestamp
-			//TODO - Is this needed? Does Radix not timestamp
-			//		 the payload itself?
-			const time = (new Date()).getTime();
-
-			// Build post record
-			const postRecord = {
-				record: "post",		// origin, amendment, retraction
-				type: "post",
-				content: content,
-				address: postAddress,
-				author: userAddress,
-				parent: (parent) ? parent.get("address") : null,			
-				origin: (parent) ? parent.get("origin") : postAddress,
-				depth: (parent) ? parent.get("depth") + 1 : 0,
-				created: time
-			}
-
-			// Build reference payload and destination accounts
-			const refAccounts = [
-				Channel.forPostsBy(userAddress)
-				//TODO - Add to other indexes for topics, mentions, links
-			];
-			const refRecord = {
-				record: "post",
-				type: "reference",
-				address: postAddress,
-				created: time
-			}
-
-			// Build alert payload
-			const alertAccounts = []
-			const alertRecord = {
-				record: "alert",
-				type: "mention",
-				address: postAddress,
-				by: userAddress
-			}
-
-			// Store records in ledger
-			this.sendRecord([postAccount], postRecord, taskID)
-				.then(await this.sendRecord(refAccounts, refRecord, taskID))
-				.then(await this.sendRecord(alertAccounts, alertRecord, taskID))
-				.then(await this.completeTask(taskID));
-
-			// Optimistic update
-			this.updateState(state => state
-				.setIn(["records", "posts", postAddress],
-					Map(fromJS(postRecord)))
-				.setIn(["records", "posts", postAddress, "pending"], true)
-				.updateIn(["user", "pending"], (p) => p += 1)
-			);
-
-		}
+		return new Promise((resolve, reject) => podium
+			.createPost(content, [], parent)
+			.then((post) => {
+				post.set("pending", true);
+				this.updateState(state => state
+					.setIn(["records", "posts", post.get("address")], post)
+					.updateIn(["user", "pending"], (p) => p += 1)
+				)
+			})
+			.catch(error => reject(error))
+		);
 
 	}
 
 
 	async getPost(address, store=true) {
-		let result;
-		if (this.state.data.get("offline")) {
-			result = this.state.data.getIn(["records", "posts", address]);
-		} else {
-			result = new Promise((resolve) => {
+		return new Promise((resolve, reject) => {
 
-				// Check if post has already been stored
-				const current = this.state.data
-					.getIn(["records", "posts", address]);
-				if (current) { resolve(current); }
+			// Check if post has already been stored
+			const current = this.state.data
+				.getIn(["records", "posts", address]);
+			if (current) { resolve(current); }
 
-				// Retrieve the latest post information for the
-				// provided address
-				this.getHistory(Channel.forPost(address))
-					.then(result => {
+			// Retrieve the latest post information for the
+			// provided address
+			podium
+				.fetchPost(address)
+				.then(post => {
 
-						// Reject a result with no posts
-						if (result.length === 0) {
-							resolve();
-						} else {
+					// Set post flags for this user
+					const author = post.get("author");
+					post
+						.set("owned", (author === this.state.data.getIn(["user", "address"])))
+						.set("following", (author in this.state.data.getIn(["records", "following"])))
+						//TODO - Other classifications
 
-							// Build post from origin, edits, retractions, etc...
-							//TODO - this
-							var post = result[0];
-							post.received = (new Date()).getTime();
-							if (post.author === this.state.data.getIn(["user", "address"])) {
-								post.owned = true;
+					// Load post's author
+					// - We don't store the author in the call to getProfile to ensure
+					//   a fully atomic, single update with both post and author
+					this.getProfile(author, false, false)
+						.then(profile => {
+
+							// Add this profile to the app state
+							// or return the result
+							if (store) {
+								this.updateState(
+									state => state
+										.updateIn(["records", "posts", address],
+											(p) => (p) ? p.mergeDeep(post) : post)
+										.updateIn(["records", "users", post.author],
+											(u) => (u) ? u.mergeDeep(profile) : profile),
+									() => { resolve(post); }
+								);
 							} else {
-								post.owned = false;
+								post.set("author", profile);
+								resolve(post);
 							}
-							if (post.author in this.state.data.getIn(["records", "following"])) {
-								post.following = true;
-							} else {
-								post.following = false;
-							}
-							//TODO - Other classifications
 
-							// Load post's author
-							// - We don't store the author in the call to getProfile to ensure
-							//   a fully atomic, single update with both post and author
-							this.getProfile(post.author, false)
-								.then(profile => {
+						});
 
-									// Add this profile to the app state
-									// or return the result
-									profile.received = (new Date()).getTime();
-									if (store) {
-										this.updateState(state => state
-											.updateIn(["records", "posts", address],
-												(p) => (p) ?
-													p.mergeDeep(Map(fromJS(post))) :
-													Map(fromJS(post)))
-											.updateIn(["records", "users", post.author],
-												(u) => (u) ?
-													u.mergeDeep(Map(fromJS(profile))) :
-													Map(fromJS(profile))),
-											() => { resolve(Map(post)); }
-										);
-									} else {
-										post.author = profile;
-										resolve(Map(post));
-									}
+				})
+				.catch(error => reject(error))
 
-								});
-
-						}
-
-					});
-
-			});
-		}
-		return result;
+		});
 	}
 
 
@@ -1278,182 +506,77 @@ class Podium extends Component {
 
 
 
+
+
 // TOPICS
 
-	async createTopic(id, description) {
+	async createTopic(id, name, description) {
 
 		// Adds a new topic by generating a storage
 		// channel from its ID and registering that
 		// channel with the main storage index.
 
-		// Create new task
-		const taskID = "new-topic-" + id;
-		await this.newTask(taskID, "Creating #" + id, 14);
-
-		// Offline mode
-		if (this.state.data.get("offline")) {
-
-			// Fake task completion
-			for (let i = 0; i < 14; i++) {
-				await this.stepTask(taskID);
-				await new Promise(resolve => setTimeout(resolve, 100));
-			}
-			this.completeTask(taskID);
-
-			// Update state
-			const topicAddress = "offlinetopic" + id;
-			this.updateState(state => state
-				.setIn(["records", "topics", topicAddress], Map({
-					record: "topic",
-					type: "topic",
-					id: id,
-					description: description,
-					owner: state.user.get("address"),
-					address: topicAddress
-				}))
-			);
-
-		} else {
-
-			// Generate topic channel
-			const topicAccount = Channel.forTopicWithID(id);
-			const topicAddress = topicAccount.getAddress();
-
-			// Build topic record
-			const topicRecord = {
-				record: "topic",
-				type: "topic",
-				id: id,
-				description: description,
-				owner: this.user.address,
-				address: topicAddress
-			}
-
-			// Build topic reference
-			const indexAccount = Channel.forTopicIndexOf(id);
-			const indexRecord = {
-				record: "topic",
-				type: "reference",
-				address: topicAddress
-			}
-
-			// Store topic
-			this.sendRecord([topicAccount], topicRecord, taskID)
-				.then(this.sendRecord([indexAccount], indexRecord, taskID))
-				.then(this.completeTask(taskID));
-
-		}
+		return new Promise((resolve, reject) => {
+			podium
+				.createTopic(
+					id, name, description,
+					this.state.data.getIn(["user", "address"])
+				)
+				.then(topic => resolve(topic))
+				.catch(error => reject(error))
+		});
 
 	}
 
 
-	async getTopicIndex(prefix, store=false) {
 
-		// Retreive an index of topics by the first 3
-		// letters of the ID.
-
-		// Offline mode
-		let result;
-		if (this.state.data.get("offline")) {
-
-			result = this.state.data
-				.getIn(["records", "topics"])
-				.filter((topic) => {
-					const id = topic.get("id");
-					return id.substring(0,
-						Math.min(prefix.length, id.length)) === prefix;
-				});
-
-		} else {
-
-			// Load history
-			result = new Promise((resolve) => {
-				this.getHistory(Channel.getTopicIndexFor(prefix))
-					.then(history => { resolve(history); })
-				});
-
-		}
-
-		return result;
-
-	}
-
-
-	async getTopic(address, store=false) {
+	async getTopic(target, id=false, store=false) {
 
 		// Retreives the record for a topic with the
 		// provided address.
 
-		//TODO - Check topic has not already been stored
+		return new Promise((resolve, reject) => {
 
-		// Offline mode
-		let result;
-		if (this.state.data.get("offline")) {
-
-			result = this.state.data
-				.getIn(["records", "topics", address]);
-
-		} else {
-
-			// Return the latest record for this topic
-			result = new Promise((resolve) => {
-				this.getLatest(Channel.forTopic(address))
-					.then(topic => {
-						topic.received = (new Date()).getTime();
-						if (store) {
-							this.updateState(state => state
-								.updateIn(["records", "topics", address],
-									(t) => (t) ?
-										t.mergeDeep(Map(fromJS(topic))) :
-										Map(fromJS(topic))),
-								() => { resolve(Map(topic)); }
-							);
-						} else {
-							resolve(Map(topic));
-						}
-					});
-			});
-
-		}
-
-		return result;
-
-	}
-
-
-	async getTopicFromID(id, store=false) {
-		let result;
-		if (this.state.data.get("offline")) {
-			result = this.state.data
-				.getIn(["records", "topics", "offlinetopic" + id]);
-		} else {
-			result = new Promise((resolve) => {
-
-				// Check if profile has already been stored
-				const topic = this.state.data
+			// Check if topic has already been stored
+			let current;
+			if (id) {
+				current = this.state.data
 					.getIn(["records", "topics"])
-					.filter((topic) => topic.get("id") === id)
-					.first();
-				if (topic) { resolve(topic); }
+					.filter((topic) => topic.get("id") === target)
+					.first()
+				if (current.size > 0) { resolve(current) }
+			} else {
+				current = this.state.data
+					.getIn(["records", "topics", target]);
+				if (current) { resolve(current) }
+			}
 
-				this.getLatest(Channel.forTopicWithID(id))
-					.then(item => {
-						if (_.isEmpty(item)) {
-							resolve(false);
-						} else {
-							this.getProfile(item.address, store)
-								.then(t => { resolve(t); });
-						}
-					});
-			});
-		}
-		return result
+			// Otherwise retreive topic from the ledger
+			podium.fetchTopic(target, id)
+				.then(topic => {
+					if (store) {
+						this.updateState(
+							state => state.updateIn(
+								["records", "topics", topic.get("address")],
+								(t) => (t) ? t.mergeDeep(topic) : topic
+							),
+							() => { resolve(topic); }
+						);
+					} else {
+						resolve(topic);
+					}
+				})
+				.catch(error => reject(error))
+		})
+
 	}
 
 
 	async deleteTopic() {
 
 	}
+
+
 
 
 
@@ -1480,120 +603,15 @@ class Podium extends Component {
 		//TODO - Check active user has the required permissions
 		//		 to follow target user
 
-		// Create task widget
-		const followAddress = follow.get("address");
-		const taskID = "follow-" + follow.get("address");
-		await this.newTask(taskID, "Following @" + follow.get("id"), 20);
-
-		// Get timestamp
-		const time = (new Date()).getTime();
-
-		// Offline mode
-		if (this.state.data.get("offline")) {
-
-			// Fake task completion
-			for (let i = 0; i < 20; i++) {
-				await this.stepTask(taskID);
-				await new Promise(resolve => setTimeout(resolve, 100));
-			}
-			this.completeTask(taskID);
-
-			// Store follow
-			this.updateState(state => state
-				.setIn(["user", "following", followAddress], Map({
-					type: "following index",
-					address: followAddress,
-					timestamp: time
-				}))
-			);
-
-		} else {
-
-			//TODO - Update to use new transaction functions
-
-			// Build follow account payload
-			const userAddress = this.state.data.getIn(["user", "address"])
-			const followAccount = Channel.forFollowing(userAddress);
-			const followPayload = JSON.stringify({
-				type: "follower index",
-				address: userAddress,
-				timestamp: time
-			});
-
-			// Build relation account and payload
-			const relationAccount = Channel.forRelationOf(
-				userAddress, followAddress);
-			const relationPayload = JSON.stringify({
-				type: "follower record",
-				users: [userAddress, followAddress],
-				follow: true,
-				timestamp: time
-			});
-
-			// Build following payload
-			const followingAccount = Channel.forFollowsBy(userAddress);
-			const followingPayload = JSON.stringify({
-				type: "following index",
-				address: followAddress,
-				timestamp: time
-			});
-
-			// Store following record
-			RadixTransactionBuilder
-				.createPayloadAtom(
-					[followAccount],
-					this.state.data.getIn(["podium", "id"]),
-					followPayload,
-					false
+		return new Promise((resolve, reject) => {
+			podium
+				.followUser(
+					this.state.data.getIn(["user", "address"]),
+					follow
 				)
-				.signAndSubmit(this.state.data.getIn(["user", "identity"]))
-				.subscribe({
-					next: async status => { await this.stepTask(taskID); },
-					error: error => { this.failTask(taskID, error); },
-					complete: async () => {
-
-						// Log Progress
-						await this.stepTask(taskID);
-
-						// Store relationship record
-						RadixTransactionBuilder
-							.createPayloadAtom(
-								[relationAccount],
-								this.state.data.getIn(["podium", "id"]),
-								relationPayload,
-								false
-							)
-							.signAndSubmit(this.state.data.getIn(["user", "identity"]))
-							.subscribe({
-								next: async status => { await this.stepTask(taskID); },
-								error: error => { this.failTask(taskID, error); },
-								complete: async () => {
-
-									// Log progress
-									await this.stepTask(taskID);
-
-									// Store followed user in active user's list
-									RadixTransactionBuilder
-										.createPayloadAtom(
-											[followingAccount],
-											this.state.data.getIn(["podium", "id"]),
-											followingPayload,
-											false
-										)
-										.signAndSubmit(this.state.data.getIn(["user", "identity"]))
-										.subscribe({
-											next: async status => { await this.stepTask(taskID); },
-											error: error => { this.failTask(taskID, error); },
-											complete: () => { this.completeTask(taskID); }
-										});
-
-								}
-							});
-
-					}
-				});
-
-		}
+				.then(result => resolve(result))
+				.catch(error => reject(error))
+		});
 
 	}
 
@@ -1647,10 +665,7 @@ class Podium extends Component {
 					records={this.state.data.get("records")}
 
 					getProfile={this.getProfile}
-					getProfileFromID={this.getProfileFromID}
-
 					getTopic={this.getTopic}
-					getTopicFromID={this.getTopicFromID}
 
 					followUser={this.followUser}
 					unfollowUser={this.unfollowUser}
@@ -1722,29 +737,8 @@ class Podium extends Component {
 
 	componentWillUnmount() {
 
-		// Online mode only
-		if (!this.state.data.get("offline")) {
-
-			// Close balance and faucet subscriptions
-			if (this.state.data.getIn(["podium", "allowance"])) {
-				clearInterval(this.state.data
-					.getIn(["podium", "allowance"]));
-				this.state.data
-					.getIn(["podium", "balanceChannel"])
-					.unsubscribe();
-			}
-
-			// Close all open channels
-			this.state.data
-				.get("channels")
-				.map((_, key) => this.closeChannel(key));
-
-		}
-
-		// Halt all active timers
-		this.state.data
-			.get("timers")
-			.map((timer) => this.stopTimer(timer));
+		// Close connections
+		podium.cleanUp();
 
 	}
 

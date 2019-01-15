@@ -20,6 +20,9 @@ import Rulebook from './pages/rulebook/rulebook';
 import Settings from './pages/settings/settings';
 import Help from './pages/help/help';
 
+import Slider from './widgets/slider';
+
+
 
 
 class Core extends Component {
@@ -192,17 +195,25 @@ class Core extends Component {
 						<div className="col-3"></div>
 					</div>
 				</div>
-				<Status
-					user={this.props.user}
-					profile={this.props.records
-						.getIn(["users", this.props.user.get("address")])}
-					setCoreMode={this.setCoreMode}
-				/>
-				<Controls
-					setCoreMode={this.setCoreMode}
-					throwPopup={this.props.throwPopup}
-					signOut={this.props.signOut}
-				/>
+				<Slider
+					direction="left"
+					time={0.6}>
+					<Status
+						user={this.props.user}
+						profile={this.props.records
+							.getIn(["users", this.props.user.get("address")])}
+						setCoreMode={this.setCoreMode}
+					/>
+				</Slider>
+				<Slider
+					direction="right"
+					time={0.6}>
+					<Controls
+						setCoreMode={this.setCoreMode}
+						throwPopup={this.props.throwPopup}
+						signOut={this.props.signOut}
+					/>
+				</Slider>
 			</div>
 		);
 	}

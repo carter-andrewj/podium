@@ -1,15 +1,15 @@
 import React, { Component } from 'react';
 
 
-class Alerts extends Component {
+class Topics extends Component {
 
 	render() {
 		return (
-			<div ref="alerts">
-				ALERTS
+			<div ref="topics">
+				TOPICS
 			</div>
 		);
 	}
 }
 
-export default Alerts;
+export default Topics;

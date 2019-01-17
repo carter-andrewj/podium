@@ -97,21 +97,11 @@ class Controls extends Component {
 					</div>
 					<div
 						className="menu-box menu-box-right"
-						onClick={this.props.setCoreMode.bind(this, "searchusers")}
-						onMouseOver={this.hoverStatus.bind(this, "searchusers")}
-						onMouseOut={this.hoverStatus.bind(this, "none")}>
-						<i className="material-icons menu-icon">search</i>
-						<div className={(over === "searchusers") ? ttOn : ttOff}>
-							<p className="menu-tooltip-text">people</p>
-						</div>
-					</div>
-					<div
-						className="menu-box menu-box-right"
-						onClick={this.props.setCoreMode.bind(this, "searchtopics")}
-						onMouseOver={this.hoverStatus.bind(this, "searchtopics")}
+						onClick={this.props.setCoreMode.bind(this, "topics")}
+						onMouseOver={this.hoverStatus.bind(this, "topics")}
 						onMouseOut={this.hoverStatus.bind(this, "none")}>
 						<span className="fa fa-hashtag menu-icon"></span>
-						<div className={(over === "searchtopics") ? ttOn : ttOff}>
+						<div className={(over === "topics") ? ttOn : ttOff}>
 							<p className="menu-tooltip-text">topics</p>
 						</div>
 					</div>
@@ -133,16 +123,6 @@ class Controls extends Component {
 						<i className="material-icons menu-icon">settings</i>
 						<div className={(over === "settings") ? ttOn : ttOff}>
 							<p className="menu-tooltip-text">settings</p>
-						</div>
-					</div>
-					<div
-						className="menu-box menu-box-right"
-						onClick={this.props.setCoreMode.bind(this, "help")}
-						onMouseOver={this.hoverStatus.bind(this, "help")}
-						onMouseOut={this.hoverStatus.bind(this, "none")}>
-						<i className="material-icons menu-icon">help</i>
-						<div className={(over === "help") ? ttOn : ttOff}>
-							<p className="menu-tooltip-text">help</p>
 						</div>
 					</div>
 					<div

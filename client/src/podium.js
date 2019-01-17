@@ -1,14 +1,11 @@
 import React, { Component } from 'react';
 import { fromJS, Map } from 'immutable';
-//import _ from 'lodash';
 
-// import { radixUniverse, RadixUniverse, //RadixLogger,
-// 		 RadixSimpleIdentity, RadixIdentityManager,
-// 		 RadixKeyStore, RadixTransactionBuilder } from 'radixdlt';
+import Sanitizer from 'sanitize';
 
-import Podix from './module';
 
-//import Channel from 'utils';
+import Podix from '@carter_andrewj/podix';
+
 import Settings from 'settings';
 
 import Lobby from './lobby/lobby';
@@ -127,8 +124,19 @@ class Podium extends Component {
 
 	componentWillMount() {
 
-		// Initialize podium module
-		podium = new Podix();
+		// Initialize podium module (live)
+		//podium = new Podix();
+
+		// Inisitalize podium mode (dev)
+		podium = new Podix({
+			"Universe": "alphanet",
+			"ApplicationID": "podiumDEV-0",
+			"API": "localhost:3000",
+			"MediaStore": "media.podium-network.com",
+			"Timeout": 30,
+			"Lifetime": 0,
+			"FileLimit": "5mb"
+		}, true)
 
 		//TODO - Handle errors in radix setup, lack
 		//		 off connection, etc...
@@ -194,6 +202,26 @@ class Podium extends Component {
 		this.updateState(state => state
 			.setIn(["tasks", id, "error"], error)
 		);
+	}
+
+
+
+
+// SEARCH
+
+	search(target) {
+		return new Promise((resolve, reject) => {
+			const cleanTarget = Sanitizer.value(target, "string");
+			fetch(`https://${podium.server}/search?target=${cleanTarget}`)
+				.then(results => {
+					if (results.length === 0) {
+						reject(new Error("no match found"))
+					} else {
+						resolve(results)
+					}
+				})
+				.catch(error => reject(error))
+		})
 	}
 
 
@@ -663,6 +691,8 @@ class Podium extends Component {
 					podium={this.state.data.get("podium")}
 					user={this.state.data.get("user")}
 					records={this.state.data.get("records")}
+
+					search={this.search}
 
 					getProfile={this.getProfile}
 					getTopic={this.getTopic}

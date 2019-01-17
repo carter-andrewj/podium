@@ -65,19 +65,6 @@ class Status extends Component {
 					</div>
 					<div
 						className="menu-box menu-box-left"
-						onClick={this.props.setCoreMode.bind(this, "alerts")}
-						onMouseOver={this.hoverStatus.bind(this, "alerts")}
-						onMouseOut={this.hoverStatus.bind(this, "none")}>
-						<i className="material-icons menu-icon">notifications</i>
-						<div className={(over === "alerts") ? numOn : numOff}>
-							<p className="status-number">{user.get("alerts")}</p>
-						</div>
-						<div className={(over === "alerts") ? ttOn : ttOff}>
-							<p className="menu-tooltip-text">alerts</p>
-						</div>
-					</div>
-					<div
-						className="menu-box menu-box-left"
 						onClick={this.props.setCoreMode.bind(this, "wallet")}
 						onMouseOver={this.hoverStatus.bind(this, "wallet")}
 						onMouseOut={this.hoverStatus.bind(this, "none")}>
@@ -128,19 +115,6 @@ class Status extends Component {
 						</div>
 						<div className={(over === "permissions") ? ttOn : ttOff}>
 							<p className="menu-tooltip-text">permissions</p>
-						</div>
-					</div>
-					<div
-						className="menu-box menu-box-left"
-						onClick={this.props.setCoreMode.bind(this, "emblems")}
-						onMouseOver={this.hoverStatus.bind(this, "emblems")}
-						onMouseOut={this.hoverStatus.bind(this, "none")}>
-						<i className="material-icons menu-icon">verified_user</i>
-						<div className={(over === "emblems") ? numOn : numOff}>
-							<p className="status-number">{user.get("emblems").length}</p>
-						</div>
-						<div className={(over === "emblems") ? ttOn : ttOff}>
-							<p className="menu-tooltip-text">emblems</p>
 						</div>
 					</div>
 				</div>

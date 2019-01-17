@@ -4,23 +4,25 @@ import { Map, fromJS } from 'immutable';
 import Status from './nav/status';
 import Controls from './nav/controls';
 
-import Feed from './pages/posting/feed';
+import Search from './search/search';
+import SearchResults from './search/searchresults';
+
+import Alerts from './alerts/alerts';
+import AlertsPage from './alerts/alertspage';
+
 import Profile from './pages/user/profile/profile';
-import Alerts from './pages/user/alerts/alerts';
 import Wallet from './pages/user/wallet/wallet';
 import Followers from './pages/user/followers/followers';
 import Following from './pages/user/following/following';
 import Permissions from './pages/user/permissions/permissions';
-import Emblems from './pages/user/emblems/emblems';
 
-import SearchUsers from './pages/search/searchusers';
-import SearchTopics from './pages/search/searchtopics';
-
+import Feed from './pages/posting/feed';
+import Topics from './pages/topics/topics';
 import Rulebook from './pages/rulebook/rulebook';
 import Settings from './pages/settings/settings';
-import Help from './pages/help/help';
 
 import Slider from './widgets/slider';
+import Fader from './widgets/fader';
 
 
 
@@ -76,11 +78,6 @@ class Core extends Component {
 				/>;
 				break;
 
-			// Show alerts
-			case ("alerts"):
-				content = <Alerts />;
-				break;
-
 			// Show wallet
 			case ("wallet"):
 				content = <Wallet />;
@@ -113,31 +110,11 @@ class Core extends Component {
 				content = <Permissions />;
 				break;
 
-			// Show emblems
-			case ("emblems"):
-				content = <Emblems />
-				break;
 
-			// Show user search
-			case ("searchusers"):
-				content = <SearchUsers
-
-					podium={this.props.podium}
-					users={this.props.records.get("users")}
-
-					getProfile={this.props.getProfile}
-					followUser={this.props.followUser}
-					unfollowUser={this.props.unfollowUser}
-
-					setCoreMode={this.setCoreMode}
-
-				/>;
-				break;
-
-			// Show topic search
-			case ("searchtopics"):
-				content = <SearchTopics />;
-				break;
+			// Show topics
+			case ("topics"):
+				content = <Topics />;
+				break;			
 
 			// Show rulebook
 			case ("rulebook"):
@@ -149,10 +126,19 @@ class Core extends Component {
 				content = <Settings />;
 				break;
 
-			// Show help
-			case ("help"):
-				content = <Help />;
+
+
+			// Show search results
+			case ("search"):
+				content = <SearchResults />;
 				break;
+
+			// Show alerts
+			case ("alerts"):
+				content = <AlertsPage />;
+				break;
+
+
 
 			// Otherwise, show the post feed
 			default:
@@ -214,6 +200,18 @@ class Core extends Component {
 						signOut={this.props.signOut}
 					/>
 				</Slider>
+				<Fader time={0.5} delay={0.5}>
+					<Search
+						search={this.props.search}
+						setCoreMode={this.setCoreMode}
+					/>
+				</Fader>
+				<Fader time={0.5} delay={0.5}>
+					<Alerts
+						alerts={this.props.records.get("alerts")}
+						setCoreMode={this.setCoreMode}
+					/>
+				</Fader>
 			</div>
 		);
 	}

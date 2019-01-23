@@ -1,10 +1,14 @@
 import React, { Component } from 'react';
+import { Link } from 'react-router-dom';
+
 import { Map, fromJS } from 'immutable';
 
 import Cropper from 'react-easy-crop';
 
+
 import Slider from '../core/widgets/slider';
 import Fader from '../core/widgets/fader';
+
 
 
 const bioContent = {
@@ -185,31 +189,33 @@ class Register extends Component {
 
 			// Build image
 			let picture;
+			let ext;
 			if (this.state.data.get("image")) {
-				picture = await getCroppedImage(
+				const image = await getCroppedImage(
 					this.state.data.get("imageURL"),
 					this.state.data.get("imagePixels")
 				)
+				picture = image.split(",")[1]
+				ext = image.split(",")[0].split("/")[1].split(";")[0];
 			}
 
 			// Dispatch to registration process
 			this.updateState(
 				state => state.set("loading", true),
 				() => this.props
-					.registerUser(id, pw, name, bio, picture)
-					.then(result => {
-						if (result) {
-							this.exit(result);
-						} else {
-							throw new Error("unknown error")
-						}
-					})
+					.registerUser(id, pw, name, bio, picture, ext)
+					//TODO - Handle edge-case where registration
+					//		 succeeds, but signin-fails
+					.then(result => this.exit(result))
 					.catch(error => {
 						//TODO - More nuanced handling of errors
 						//		 occurring when creating user
 						this.updateState(state => state
+							.set("loading", false)
+							//TODO - Surface errors
 							.setIn(["errors", "other"], "unknown error")
 						)
+						console.error(error);
 					})
 			)
 
@@ -393,16 +399,13 @@ class Register extends Component {
 
 		const exit = this.state.data.get("exit")
 
-		//TODO - Enclose in form tags for submit on `enter`
-
 		return (
 			<div ref="register" className="lobby-box">
 				<Slider
 					direction="top"
 					timeIn={0.4} delayIn={0.0}
 					timeOut={0.4} delayOut={0.4}
-					exit={exit}
-					onExit={() => this.props.setLobbyMode("login")}>
+					exit={exit}>
 					<div className="register-box card">
 						<Fader
 							timeIn={0.2} delayIn={0.4}
@@ -412,14 +415,18 @@ class Register extends Component {
 								className="card register-back"
 								onMouseOver={this.highlight.bind(this, "back")}
 								onMouseOut={this.highlight.bind(this, null)}
-								onClick={this.exit.bind(this,
-									() => this.props.setLobbyMode("login"))}>
+								onClick={this.exit.bind(this, () => this.lobbyRoute.click())}>
 								{(this.state.data.get("highlight") === "back") ?
 									<div className="register-caption register-caption-back">
 										cancel
 									</div> : null
 								}
 								<span className="fas fa-chevron-left back-icon"></span>
+								<Link
+									to="/"
+									innerRef={ref => this.lobbyRoute = ref}
+									style={{ display: "none "}}
+								/>
 							</div>
 						</Fader>
 						<form onSubmit={this.register.bind(this)}>

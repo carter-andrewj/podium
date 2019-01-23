@@ -10,7 +10,7 @@ class Followers extends Component {
 
 		// Check data
 		let content;
-		if (this.props.followerCount === 0) {
+		if (this.props.followers.size === 0) {
 
 			// Handle empty data (i.e. no followers)
 			content = <div className="empty-page">
@@ -26,7 +26,7 @@ class Followers extends Component {
 			content = <div>
 				<div className="follower-header">
 					<p className="title">
-						You have {this.props.followerCount} followers:
+						You have {this.props.followers.size} followers:
 					</p>
 				</div>
 				{this.props.followers
@@ -38,8 +38,6 @@ class Followers extends Component {
 						getProfile={this.props.getProfile}
 						followUser={this.props.followUser}
 						unfollowUser={this.props.unfollowUser}
-
-						setCoreMode={this.props.setCoreMode}
 
 					/>)
 					.toList()

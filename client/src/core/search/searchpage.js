@@ -4,7 +4,7 @@ import Search from './search';
 
 
 
-class SearchResults extends Search {
+class SearchPage extends Search {
 
 
 	componentWillMount() {
@@ -59,4 +59,4 @@ class SearchResults extends Search {
 
 }
 
-export default SearchResults;
+export default SearchPage;

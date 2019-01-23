@@ -1,4 +1,6 @@
 import React, { Component } from 'react';
+import { Link } from 'react-router-dom';
+
 import { Map, fromJS } from 'immutable';
 
 import Popup from '../widgets/popup';
@@ -45,6 +47,7 @@ class Controls extends Component {
 
 	render() {
 
+		let active = this.props.active;
 		let over = this.state.data.get("highlight");
 		let ttOn = "menu-tooltip menu-tooltip-right menu-tooltip-on";
 		let ttOff =  "menu-tooltip menu-tooltip-right menu-tooltip-off";
@@ -75,52 +78,84 @@ class Controls extends Component {
 			<div ref="controls" className="menu menu-right">
 				<div className="menu-bar menu-bar-right card">
 					<div
-						className="menu-box menu-box-right menu-box-top menu-box-top-right"
-						onClick={this.props.setCoreMode.bind(this, "feed")}
+						className="menu-box menu-box-right menu-box-top-right"
+						onClick={() => this.feedLink.click()}
 						onMouseOver={this.hoverStatus.bind(this, "feed")}
 						onMouseOut={this.hoverStatus.bind(this, "none")}>
-						<div className="menu-top-holder">
-							<div className={(over === "feed") ?
-								"menu-feed-holder menu-feed-holder-on" :
-								"menu-feed-holder menu-feed-holder-off"}>
-								<div className="menu-feed-icon-holder">
-									{(over === "feed") ?
-										<span className="fas fa-th-list menu-icon menu-feed-icon menu-feed-icon-on" /> :
-										<span className="fas fa-th-list menu-icon menu-feed-icon menu-feed-icon-off" />
-									}
-								</div>
-							</div>
-							<div className={(over === "feed") ? ttOn : ttOff}>
-								<p className="menu-tooltip-text">feed</p>
-							</div>
+						<Link
+							innerRef={ref => this.feedLink = ref}
+							style={{ display: "none" }}
+							to="/"
+						/>
+						<div className="menu-box-top menu-box-top-right">
+							<img
+								className={(over === "feed") ?
+									"menu-picture menu-picture-right menu-picture-on" :
+									(active === "feed") ?
+										"menu-picture menu-picture-right menu-picture-active" :
+										"menu-picture menu-picture-right menu-picture-off"
+								}
+								src={(active === "feed" || over === "feed") ?
+									"./images/icon-feed-green.png" :
+									"./images/icon-feed.png"
+								}
+								alt=""
+							/>
+						</div>
+						<div className={(over === "feed") ? ttOn : ttOff}>
+							<p className="menu-tooltip-text">feed</p>
 						</div>
 					</div>
 					<div
 						className="menu-box menu-box-right"
-						onClick={this.props.setCoreMode.bind(this, "topics")}
+						onClick={() => this.topicsLink.click()}
 						onMouseOver={this.hoverStatus.bind(this, "topics")}
 						onMouseOut={this.hoverStatus.bind(this, "none")}>
-						<span className="fa fa-hashtag menu-icon"></span>
+						<Link
+							innerRef={ref => this.topicsLink = ref}
+							style={{ display: "none" }}
+							to="/topics"
+						/>
+						<i className={(active === "topics") ?
+							"fas fa-hashtag menu-icon menu-icon-active" :
+							"fas fa-hashtag menu-icon"
+						}/>
 						<div className={(over === "topics") ? ttOn : ttOff}>
 							<p className="menu-tooltip-text">topics</p>
 						</div>
 					</div>
 					<div
 						className="menu-box menu-box-right"
-						onClick={this.props.setCoreMode.bind(this, "rulebook")}
-						onMouseOver={this.hoverStatus.bind(this, "rulebook")}
+						onClick={() => this.governanceLink.click()}
+						onMouseOver={this.hoverStatus.bind(this, "governance")}
 						onMouseOut={this.hoverStatus.bind(this, "none")}>
-						<i className="material-icons menu-icon">book</i>
-						<div className={(over === "rulebook") ? ttOn : ttOff}>
-							<p className="menu-tooltip-text">rulebook</p>
+						<Link
+							innerRef={ref => this.governanceLink = ref}
+							style={{ display: "none"}}
+							to="/governance"
+						/>
+						<i className={(active === "governance") ?
+							"fas fa-gavel menu-icon menu-icon-active" :
+							"fas fa-gavel menu-icon"
+						}/>
+						<div className={(over === "governance") ? ttOn : ttOff}>
+							<p className="menu-tooltip-text">governance</p>
 						</div>
 					</div>
 					<div
 						className="menu-box menu-box-right"
-						onClick={this.props.setCoreMode.bind(this, "settings")}
+						onClick={() => this.settingsLink.click()}
 						onMouseOver={this.hoverStatus.bind(this, "settings")}
 						onMouseOut={this.hoverStatus.bind(this, "none")}>
-						<i className="material-icons menu-icon">settings</i>
+						<Link
+							innerRef={ref => this.settingsLink = ref}
+							style={{ display: "none"}}
+							to="/settings"
+						/>
+						<i className={(active === "settings") ?
+							"fas fa-cogs menu-icon menu-icon-active" :
+							"fas fa-cogs menu-icon"
+						}/>
 						<div className={(over === "settings") ? ttOn : ttOff}>
 							<p className="menu-tooltip-text">settings</p>
 						</div>
@@ -130,7 +165,7 @@ class Controls extends Component {
 						onClick={this.toggleSignOut.bind(this)}
 						onMouseOver={this.hoverStatus.bind(this, "sign-out")}
 						onMouseOut={this.hoverStatus.bind(this, "none")}>
-						<i className="material-icons menu-icon">exit_to_app</i>
+						<i className="fas fa-sign-out-alt menu-icon"></i>
 						<div className={(over === "sign-out") ? ttOn : ttOff}>
 							<p className="menu-tooltip-text">sign-out</p>
 						</div>

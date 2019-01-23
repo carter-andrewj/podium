@@ -1,10 +1,9 @@
 import React, { Component } from 'react';
+import { Link } from 'react-router-dom';
+
 import { Map, fromJS } from 'immutable';
 
 import Slider from '../core/widgets/slider';
-import Fader from '../core/widgets/fader';
-
-import { formatNumber } from 'utils';
 
 
 
@@ -15,22 +14,11 @@ class Login extends Component {
 		super()
 		this.state = {
 			data: Map(fromJS({
-				stats: {
-					newUsers: 2132,
-					returningUsers: 494294,
-					posts: 6294651,
-					pod: 1257328427,
-					aud: 6372901,
-					promoted: 1144838,
-					reports: 12327,
-					sanctions: 8321
-				},
 				login: false,
 				loginLock: false,
 				loading: false,
 				error: null,
 				exit: false,
-				highlight: null
 			}))
 		}
 		this.signIn = this.signIn.bind(this);
@@ -76,9 +64,7 @@ class Login extends Component {
 					.set("loading", true),
 				() => this.props
 					.signIn(id, pw)
-					.then(result => {
-						if (result) { this.exit(result) }
-					})
+					.then(result => this.exit(result))
 					.catch(error => {
 						console.log("ERROR:", error)
 						if (error.code === 1 || error.code === 2) {
@@ -91,7 +77,7 @@ class Login extends Component {
 								.set("loading", false)
 								.set("error", "unknown error - please try again")
 							)
-							throw error
+							console.error(error)
 						}
 					})
 			)
@@ -150,12 +136,6 @@ class Login extends Component {
 	}
 
 
-	highlight(target) {
-		this.updateState(state => state
-			.set("highlight", target))
-	}
-
-
 	render() {
 
 		const showLogin = (
@@ -168,6 +148,12 @@ class Login extends Component {
 
 		return (
 			<div ref="login" className="lobby-box">
+
+				<div className="content-holder">
+					<div className="content-column">
+						{this.props.children}
+					</div>
+				</div>
 
 				<div
 					className="login-capture"
@@ -209,6 +195,7 @@ class Login extends Component {
 									}
 									onBlur={this.unlockLogin.bind(this)}
 									onKeyPress={this.resetError.bind(this)}
+									onKeyDown={this.resetError.bind(this)}
 								/>
 								<input
 									ref={ref => this.password = ref}
@@ -224,6 +211,7 @@ class Login extends Component {
 									}
 									onBlur={this.unlockLogin.bind(this)}
 									onKeyPress={this.resetError.bind(this)}
+									onKeyDown={this.resetError.bind(this)}
 								/>
 								<div
 									className="signin-button"
@@ -249,118 +237,20 @@ class Login extends Component {
 					timeOut={0.4} delayOut={0.2}
 					exit={exit}>
 					<div className="join-box card">
+						<Link
+							to="/register"
+							innerRef={ref => this.regRoute = ref}
+							style={{ display: "none" }}
+						/>
 						<div
 							className="join-button"
-							onClick={this.setMode.bind(this, "register")}>
+							onClick={() => this.regRoute.click()}>
 							sign up
 						</div>
 						<div
 							className="join-suffix"
-							onClick={this.setMode.bind(this, "register")}>
+							onClick={() => this.regRoute.click()}>
 							<span className="fas fa-user-plus signin-icon"></span> 
-						</div>
-					</div>
-				</Slider>
-
-				<Fader
-					timeIn={1.5}
-					timeOut={0.5}
-					exit={exit}>
-					<div className="title-box">
-						<img
-							className="lobby-image"
-							src="./images/title-logo.png"
-							alt=""
-						/>
-					</div>
-				</Fader>
-
-				<Slider
-					direction="bottom"
-					timeIn={1.0} delayIn={1.0}
-					timeOut={0.4} delayOut={0.2}
-					exit={exit}>
-					<div className="stat-container">
-						<div
-							className="stat-box card"
-							onMouseOver={this.highlight.bind(this, "stats")}
-							onMouseOut={this.highlight.bind(this, null)}>
-							{(this.state.data.get("highlight") === "stats") ?
-								<div className="stat-caveat">
-									public dashboards under construction
-								</div>
-								: null
-							}
-							<div className="stat-title">
-								Today
-							</div>
-							<div className="stat-holder">
-								<p className="stat-number stat-blue">
-									{formatNumber(this.state.data.getIn(["stats", "newUsers"]))}
-								</p>
-								<p className="stat-label">
-									new members
-								</p>
-							</div>
-							<div className="stat-holder">
-								<p className="stat-number stat-blue">
-									{formatNumber(this.state.data.getIn(["stats", "returningUsers"]))}
-								</p>
-								<p className="stat-label">
-									active users
-								</p>
-							</div>
-							<div className="stat-holder">
-								<p className="stat-number stat-green">
-									{formatNumber(this.state.data.getIn(["stats", "posts"]))}
-								</p>
-								<p className="stat-label">
-									new posts
-								</p>
-							</div>
-							<div className="stat-holder">
-								<p className="stat-number stat-green">
-									{formatNumber(this.state.data.getIn(["stats", "pod"]))}
-								</p>
-								<p className="stat-label">
-									POD spent
-								</p>
-							</div>
-							<div className="stat-holder">
-								<p className="stat-number stat-purple">
-									{formatNumber(this.state.data.getIn(["stats", "aud"]))}
-								</p>
-								<p className="stat-label">
-									AUD spent
-								</p>
-							</div>
-							<div className="stat-holder">
-								<p className="stat-number stat-purple">
-									{formatNumber(this.state.data.getIn(["stats", "promoted"]))}
-								</p>
-								<p className="stat-label">
-									posts promoted
-								</p>
-							</div>
-							<div className="stat-holder">
-								<p className="stat-number stat-red">
-									{formatNumber(this.state.data.getIn(["stats", "reports"]))}
-								</p>
-								<p className="stat-label">
-									new reports
-								</p>
-							</div>
-							<div className="stat-holder">
-								<p className="stat-number stat-red">
-									{formatNumber(this.state.data.getIn(["stats", "sanctions"]))}
-								</p>
-								<p className="stat-label">
-									sanctions
-								</p>
-							</div>
-							<div className="stat-ender">
-								<span className="fas fa-chart-bar stat-icon"></span>
-							</div>
 						</div>
 					</div>
 				</Slider>

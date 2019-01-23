@@ -1,8 +1,9 @@
 import React, { Component } from 'react';
-import { Map, is, fromJS } from 'immutable';
+import { Map, fromJS, is } from 'immutable';
 
-import Send from './send';
 import Thread from './thread';
+import Send from './send';
+
 
 
 
@@ -14,94 +15,123 @@ class Feed extends Component {
 		super()
 		this.state = {
 			data: Map(fromJS({
-				active: {},			// Currently displayed threads
-				pending: {			// Next update of threads
-					"threads": {},
-					"counter": 0
-				}
+				pending: 0,		// Total posts waiting to be published
+				published: 0,	// Total published posts
+				next: 0,		// ID of the next feed
+				feeds: []		// Stored feed components (to preserve ordering)
 			}))
 		}
-		this.showPosts = this.showPosts.bind(this);
 	}
 
 
 	updateState(up, callback) {
 		this.setState(
-			({data}) => { return {data: up(data)} },
+			({data}) => { return { data: up(data)} },
 			callback
 		);
 	}
 
 
 	componentDidMount() {
-		this.buildPosts(Map({}))
+
+		// Automatically publish posts
+		if (this.props.feedData.get("published") < 10) {
+			this.props.publishPosts()
+		}
+
 	}
 
 
 	componentDidUpdate(lastProps) {
-		if (!is(this.props.posts, lastProps.posts)) {
-			this.buildPosts(lastProps.posts);
+
+		// Auto-publish on updates if feed is empty
+		if (!is(this.props.feedData, lastProps.feedData) &&
+				this.props.feedData.get("published") < 10) {
+			this.props.publishPosts()
 		}
+
 	}
 
 
-	buildPosts(lastPosts) {
-		const threads = this.props.posts
-			.filter((thisPost, id) => {
-				const lastPost = lastPosts.get(id);
-				return (thisPost.get("content") && !is(thisPost, lastPost));
-			})
-			.reduce((result, post) => {
-				const origin = post.get("origin");
-				if (!result.getIn(["threads", origin])) {
-					if (this.state.data.getIn(["active", origin])) {
-						result = result.setIn(["threads", origin],
-							this.state.data.getIn(["active", origin]))
-					} else {
-						result = result.setIn(["threads", origin], Map({
-						  	"posts": Map({}),
-							"time": 0
-						}));
-					}
-				}
-				return result
-					.updateIn(["threads", origin, "posts"],
-							  (p) => p.set(post.get("address"), post))
-					.updateIn(["threads", origin, "time"],
-							  (t) => Math.max(t, post.get("received")))
-					.update("counter", (p) => p += 1);
-			}, this.state.data.get("pending"));
-		if (threads.get("counter") > 0) {
-			this.updateState(state => state
-				.set("pending", threads)
-			);
-		}
-	}
+	// buildPosts(lastPosts) {
+	// 	const threads = this.props.posts
+	// 		.filter((thisPost, id) => {
+	// 			const lastPost = lastPosts.get(id);
+	// 			return (thisPost.get("content") && !is(thisPost, lastPost));
+	// 		})
+	// 		.reduce((result, post) => {
+	// 			const origin = post.get("origin");
+	// 			if (!result.getIn(["threads", origin])) {
+	// 				if (this.state.data.getIn(["active", origin])) {
+	// 					result = result.setIn(["threads", origin],
+	// 						this.state.data.getIn(["active", origin]))
+	// 				} else {
+	// 					result = result.setIn(["threads", origin], Map({
+	// 					  	"posts": Map({}),
+	// 						"time": 0
+	// 					}));
+	// 				}
+	// 			}
+	// 			return result
+	// 				.updateIn(["threads", origin, "posts"],
+	// 						  (p) => p.set(post.get("address"), post))
+	// 				.updateIn(["threads", origin, "time"],
+	// 						  (t) => Math.max(t, post.get("received")))
+	// 				.update("counter", (p) => p += 1);
+	// 		}, this.state.data.get("pending"));
+	// 	if (threads.get("counter") > 0) {
+	// 		this.updateState(state => state
+	// 			.set("pending", threads)
+	// 		);
+	// 	}
+	// }
 
 
-	showPosts() {
-		console.log("UPDATED ACTIVE THREADS")
-		this.updateState(state => state
-			.update("active",
-				(a) => a.merge(state.getIn(["pending", "threads"])))
-			.set("pending", Map({ counter: 0 }))
-		);
-	}
+	// showPosts() {
+	// 	// this.updateState(state => state
+	// 	// 	.set("pending", 0)
+	// 	// 	.update("feeds", f => f.push(<Feed
+
+	// 	// 		key={`feed-${state.next}`}
+	// 	// 		feedID={state.next}
+
+	// 	// 		activeUser={this.props.activeUser}
+	// 	// 		getProfile={this.props.getProfile}
+
+	// 	// 		posts={this.props.posts}
+
+	// 	// 		getPost={this.props.getPost}
+	// 	// 		sendPost={this.props.sendPost}
+	// 	// 		publishPosts={this.props.publishPosts}
+				
+	// 	// 		promotePost={this.props.promotePost}
+	// 	// 		reportPost={this.props.reportPost}
+	// 	// 		amendPost={this.props.amendPost}
+	// 	// 		retractPost={this.props.retractPost}
+
+	// 	// 		followUser={this.props.followUser}
+	// 	// 		unfollowUser={this.props.unfollowUser}
+
+	// 	// 	/>))
+	// 	// 	.update("next", n => n + 1)
+	// 	// );
+	// }
 
 
 	render() {
 
 		// Handle pending posts
-		let waiting;
-		if (this.state.data.getIn(["pending", "counter"]) > 0) {
-			waiting = <div
+		let pending;
+		const pendCount = this.props.feedData.get("pending")
+		if (pendCount > 0) {
+			pending = <div
 				className="pending-posts card"
-				onClick={this.showPosts.bind(this)}>
-				{"show " + this.state.data.getIn(["pending", "counter"]) + " new posts"}
+				onClick={() => this.props.publishPosts()}>
+				{`show ${pendCount} new posts`}
 			</div>
 		}
 
-		//TODO - Order posts by -received- timestamp, not -sent-
+		//TODO - Auto-publish posts if the feed is empty
 
 		//TODO - Show placeholder while no posts are in feed
 
@@ -109,62 +139,49 @@ class Feed extends Component {
 
 		//TODO - Put "no more posts" at page footer
 
+		console.log(this.props.feedData.toJS())
+
 		// Build feed
 		return (
-			<div ref="feed" className="Feed container">
+			<div ref="feed" className="feedpage">
 				<div className="send-box card">
 					<Send
 						reply={false}
 						activeUser={this.props.activeUser}
-						getProfileFromID={this.props.getProfileFromID}
-						getTopicFromID={this.props.getTopicFromID}
+						getProfile={this.props.getProfile}
+						getTopic={this.props.getTopic}
 						sendPost={this.props.sendPost}
 					/>
 				</div>
-				{waiting}
-				<div className="row">
-					<div className="col-1"></div>
-					<div className="col-10 input-col">
-						{this.state.data
-							.get("active")
-							.map((thread, id) => thread.set("origin", id))
-							.sort((a, b) => a.get("time") < b.get("time") ? 1 : -1)
-							.map(thread => {
-								console.log("THREAD: ", thread.toJS())
-								return <Thread
+				{pending}
+				<div className="feed-core">
+					{this.props.feedData
+						.get("threads")
+						.map((thread, i) => <Thread
 
-									key={"thread-" + thread.get("origin")}
-									thread={thread.get("origin")}
+							key={`thread-${i}`}
+							id={`thread-${i}`}
 
-									activeUser={this.props.activeUser}
+							activeUser={this.props.activeUser}
+							getProfile={this.props.getProfile}
 
-									users={this.props.users}
-									posts={thread.get("posts")}
+							posts={thread}
 
-									getPost={this.props.getPost}
-									sendPost={this.props.sendPost}
+							getPost={this.props.getPost}
+							sendPost={this.props.sendPost}
+							
+							promotePost={this.props.promotePost}
+							reportPost={this.props.reportPost}
+							amendPost={this.props.amendPost}
+							retractPost={this.props.retractPost}
 
-									getProfileFromID={this.props.getProfileFromID}
-									getTopicFromID={this.props.getTopicFromID}
-									
-									promotePost={this.props.promotePost}
-									reportPost={this.props.reportPost}
+							followUser={this.props.followUser}
+							unfollowUser={this.props.unfollowUser}
 
-									amendPost={this.props.amendPost}
-									retractPost={this.props.retractPost}
-
-									setCoreMode={this.props.setCoreMode}
-
-									followUser={this.props.followUser}
-									unfollowUser={this.props.unfollowUser}
-
-								/>
-							})
-							.toList()
-						}
-						<div className="footer-spacer"></div>
-					</div>
-					<div className="col-1"></div>
+						/>)
+						.toList()
+					}
+					<div className="footer-spacer"></div>
 				</div>
 			</div>
 		);

@@ -375,14 +375,18 @@ class Send extends Component {
 	validateMention(id) {
 		id = id.substring(1, id.length);
 		return new Promise((resolve) => {
-			this.props.getProfileFromID(id)
+			this.props.getProfile(id, true)
 				.then(profile => {
 					if (profile) {
 						resolve(true);
 					} else {
 						resolve(false);
 					}
-				});
+				})
+				.catch(error => {
+					console.error(error)
+					resolve(false)
+				})
 		});
 	}
 
@@ -390,14 +394,18 @@ class Send extends Component {
 	validateTopic(id) {
 		id = id.substring(1, id.length);
 		return new Promise((resolve) => {
-			this.props.getTopicFromID(id)
+			this.props.getTopic(id, true)
 				.then(topic => {
 					if (topic) {
 						resolve(true);
 					} else {
 						resolve(false);
 					}
-				});
+				})
+				.catch(error => {
+					console.error(error)
+					resolve(false)
+				})
 		});
 	}
 

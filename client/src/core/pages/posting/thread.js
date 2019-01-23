@@ -1,55 +1,115 @@
 import React, { Component } from 'react';
+import { Map, fromJS } from 'immutable';
 
 import Post from './post';
 
 
 
+const tempPost = Map({
+	content: "",
+	author: null
+})
+
 
 class Thread extends Component {
+
+
+	constructor() {
+		super()
+		this.state = {
+			data: Map(fromJS({
+				posts: []
+			}))
+		}
+	}
+
+
+	updateState(up, callback) {
+		this.setState(
+			({data}) => { return { data: up(data)} },
+			callback
+		);
+	}
+
+
+
+	componentWillMount() {
+
+		// Create initial population of empty posts
+		const placeholders = this.props.posts
+			.map(address => {
+				if (typeof post === "string") {
+					return tempPost.set("address", address)
+				} else {
+					return Map({
+						type: "spacer",
+						value: address
+					})
+				}
+			}, Map())
+
+		// Store placeholders in state and trigger
+		// loading of posts
+		this.updateState(
+			state => state.set("posts", placeholders),
+			() => this.props.posts
+				.map((address, i) =>
+					this.props.getPost(address, false)
+						.then(post =>
+							this.updateState(state => state
+								.setIn(["posts", i], post)
+							)
+						)
+				)
+
+		)
+
+	}
+
 
 	render() {
 
 		//TODO - Filter data passed down to each post
 		
 		// Render thread
-		return <div
-			ref={"thread-" + this.props.root}
-			className="thread-holder">
+		return <div className="thread-holder">
 			<div className="thread-card card">
-				{this.props.posts
-					.map((post, id) => post)
-					.sort((a, b) => a.get("depth") > b.get("depth") ? 1 : -1)
-					.map((post) => <Post
+				{this.props.posts.map(post => {
 
-						key={"post-" + post.get("address")}
-						index={post.get("depth")}
+					if (typeof post === "number") {
 
-						activeUser={this.props.activeUser}
+						return <div
+							key={`${this.props.id}-spacer`}
+							className="post-spacer">
+							{`load ${post} posts`}
+						</div>
 
-						thread={this.props.origin}
-						user={this.props.users.get(post.get("author"))}
-						post={post}
+					} else {
 
-						users={this.props.users}
+						return <Post
 
-						getProfileFromID={this.props.getProfileFromID}
-						getTopicFromID={this.props.getTopicFromID}
+							key={`${this.props.id}-${post}`}
+							post={post}
 
-						sendPost={this.props.sendPost}
+							activeUser={this.props.activeUser}
+							getProfile={this.props.getProfile}
 
-						promotePost={this.props.promotePost}
-						reportPost={this.props.reportPost}
-						retractPost={this.props.retractPost}
-						amendPost={this.props.amendPost}
+							getPost={this.props.getPost}
+							sendPost={this.props.sendPost}
 
-						followUser={this.props.followUser}
-						unfollowUser={this.props.unfollowUser}
+							promotePost={this.props.promotePost}
+							reportPost={this.props.reportPost}
+							retractPost={this.props.retractPost}
+							amendPost={this.props.amendPost}
 
-						setCoreMode={this.props.setCoreMode}
+							followUser={this.props.followUser}
+							unfollowUser={this.props.unfollowUser}
 
-					/>)
-					.toList()
-				}
+						/>
+
+					}
+
+				}).toList()}
 			</div>
 		</div>
 

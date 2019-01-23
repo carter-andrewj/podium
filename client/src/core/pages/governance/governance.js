@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 
 
-class Rulebook extends Component {
+class Governance extends Component {
 
 	render() {
 		return (
@@ -12,4 +12,4 @@ class Rulebook extends Component {
 	}
 }
 
-export default Rulebook;
+export default Governance;

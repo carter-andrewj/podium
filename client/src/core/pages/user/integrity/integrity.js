@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 
 
 
-class Permissions extends Component {
+class Integrity extends Component {
 
 	render() {
 		return (
@@ -13,4 +13,4 @@ class Permissions extends Component {
 	}
 }
 
-export default Permissions;
+export default Integrity;

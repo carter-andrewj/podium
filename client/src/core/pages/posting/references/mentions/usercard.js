@@ -63,8 +63,7 @@ class UserCard extends Component {
 			<div className="usercard-buttons">
 				<button
 					className="usercard-button usercard-profile-button"
-					onClick={this.props.setCoreMode.bind(this,
-						"profile", this.props.user)}>
+					>
 					<span className="fas fa-user-circle usercard-button-icon"></span>
 				</button>
 				{(this.props.user.getIn(["following", this.props.user.get("address")])) ?

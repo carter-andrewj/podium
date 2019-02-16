@@ -1,44 +1,62 @@
 import React from 'react';
 
-import Search from './search';
+import ImmutableComponent from '../widgets/immutableComponent';
+
+import ProfileFeed from '../pages/user/profile/profilefeed';
 
 
 
-class SearchPage extends Search {
+let timer;
 
 
-	componentWillMount() {
+class SearchPage extends ImmutableComponent {
 
-		// Populate existing results, if required
-		if (this.props.results) {
-			this.updateState(state => state
-				.set("results", this.props.results)
-			)
-		}
 
-		// Perform requested search, if required
-		if (this.props.target) {
-			this.search(this.props.target);
-		}
+	quickSearch(event) {
+
+		// Get current search string
+		const target = this.searchInput.value;
+
+		// Do search on delay
+		clearTimeout(timer);
+		timer = setTimeout(
+			() => this.props.search(target),
+			500
+		)
+
+	}
+
+	search(event) {
+
+		event.preventDefault()
+
+		// Get current search string
+		const target = this.searchInput.value;
+
+		// Do search on delay
+		clearTimeout(timer);
+		this.props.search(target)
 
 	}
 
 
+
 	render() {
 		return (
-			<div ref="searchresults">
+			<div className="searchpage">
+
 				<div className="searchpage-box card">
-					<form onSubmit={this.doSearch.bind(this)}>
+					<form onSubmit={this.search.bind(this)}>
 						<input
 							ref={ref => this.searchInput = ref}
-							onKeyPress={this.search.bind(this)}
+							onKeyUp={this.quickSearch.bind(this)}
 							className="searchpage-input"
 							placeholder="Search users, topics, etc..."
 						/>
 						<div
 							className="searchpage-button"
-							onClick={this.doSearch.bind(this)}>
-							search
+							onClick={this.search.bind(this)}>
+							<i className="fas fa-search searchpage-button-icon" />
 						</div>
 						<button
 							type="submit"
@@ -46,15 +64,50 @@ class SearchPage extends Search {
 						/>
 					</form>
 				</div>
+
 				<div className="searchpage-filters">
 				</div>
-				{this.state.data.get("results")
-					.filter()
-					.map()
-					.toList()
-				}
+
+				<div className="searchpage-results">
+					<ProfileFeed
+
+						podium={this.props.podium}
+						activeUser={this.props.activeUser}
+
+						from="address"
+						users={this.props.results
+							.map(r => r.get("address"))
+							.toList()
+						}
+						
+						getUser={this.props.getUser}
+
+						header={
+							<p className="profile-feed-title">
+								<i className="fas fa-user-circle profile-feed-title-icon" />
+								<span className="profile-feed-title-text">
+									{this.props.loading ?
+										<i className="fas fa-circle-notch profile-feed-title-loader" />
+										: (this.props.results.size === 0) ?
+											"no results found" :
+											(this.props.results.size === 1) ?
+												"1 result" :
+												`${this.props.results.size} results`
+									}
+								</span>
+							</p>
+						}
+
+					/>
+				</div>
+
 			</div>
 		);
+	}
+
+
+	componentWillUnmount() {
+		this.props.resetSearch()
 	}
 
 }

@@ -43,8 +43,24 @@ class Status extends Component {
 
 	render() {
 
-		//const user = this.props.user;
-		let active = this.props.active;
+		let active;
+		switch (this.props.active) {
+			case (`/user/${this.props.activeUser.id}`):
+				active = "profile"
+				break
+			case ("/wallet"):
+				active = "wallet"
+				break
+			case ("/integrity"):
+				active = "integrity"
+				break
+			case ("/settings"):
+				active = "settings"
+				break
+			default:
+				active = ""
+		}
+
 		let over = this.state.data.get("highlight");
 		let ttOn = "menu-tooltip menu-tooltip-left menu-tooltip-on";
 		let ttOff =  "menu-tooltip menu-tooltip-left menu-tooltip-off";
@@ -53,38 +69,42 @@ class Status extends Component {
 			<div ref="status" className="menu menu-left">
 				<div className="menu-bar menu-bar-left card">
 					<div
-						className="menu-box menu-box-left menu-box-top-left"
+						className={(over === "profile" && active !== "profile") ?
+							"menu-box menu-box-left menu-box-top-left menu-box-over" :
+							"menu-box menu-box-left menu-box-top-left"
+						}
 						onClick={() => this.profileLink.click()}
 						onMouseOver={this.hoverStatus.bind(this, "profile")}
 						onMouseOut={this.hoverStatus.bind(this, "none")}>
 						<Link
 							innerRef={ref => this.profileLink = ref}
 							style={{ display: "none" }}
-							to={`/user/${this.props.activeUser.get("address") || ""}`}
+							to={`/user/${this.props.activeUser.id || ""}`}
 						/>
-						<div className="menu-box-top menu-box-top-left">
-							{(this.props.activeUser.get("address") !== "") ?
-								<img
-									className={(over === "profile") ?
+						{this.props.activeUser.picture ?
+							<img
+								className={(active === "profile") ?
+									"menu-picture menu-picture-left menu-picture-active" :
+									(over === "profile") ?
 										"menu-picture menu-picture-left menu-picture-on" :
-										(active === "profile") ?
-											"menu-picture menu-picture-left menu-picture-active" :
-											"menu-picture menu-picture-left menu-picture-off"
-									}
-									src={this.props.activeUser.getIn(["profile", "pictureURL"])}
-									alt=""
-								/> :
-								<div className="menu-profile-placeholder">
-									<i className="fas fa-spinner menu-loader" />
-								</div>
-							}
-						</div>
+										"menu-picture menu-picture-left menu-picture-off"
+								}
+								src={this.props.activeUser.picture}
+								alt=""
+							/> :
+							<div className="menu-profile-placeholder">
+								<i className="fas fa-spinner menu-loader" />
+							</div>
+						}
 						<div className={(over === "profile") ? ttOn : ttOff}>
 							<p className="menu-tooltip-text">profile</p>
 						</div>
 					</div>
 					<div
-						className="menu-box menu-box-left"
+						className={(over === "wallet" && active !== "wallet") ?
+							"menu-box menu-box-left menu-box-over" :
+							"menu-box menu-box-left"
+						}
 						onClick={() => this.walletLink.click()}
 						onMouseOver={this.hoverStatus.bind(this, "wallet")}
 						onMouseOut={this.hoverStatus.bind(this, "none")}>
@@ -102,43 +122,10 @@ class Status extends Component {
 						</div>
 					</div>
 					<div
-						className="menu-box menu-box-left"
-						onClick={() => this.followersLink.click()}
-						onMouseOver={this.hoverStatus.bind(this, "followers")}
-						onMouseOut={this.hoverStatus.bind(this, "none")}>
-						<Link
-							innerRef={ref => this.followersLink = ref}
-							style={{ display: "none" }}
-							to="/followers"
-						/>
-						<i className={(active === "followers") ?
-							"fas fa-users menu-icon menu-icon-active" :
-							"fas fa-users menu-icon"
-						}/>
-						<div className={(over === "followers") ? ttOn : ttOff}>
-							<p className="menu-tooltip-text">followers</p>
-						</div>
-					</div>
-					<div
-						className="menu-box menu-box-left"
-						onClick={() => this.followingLink.click()}
-						onMouseOver={this.hoverStatus.bind(this, "following")}
-						onMouseOut={this.hoverStatus.bind(this, "none")}>
-						<Link
-							innerRef={ref => this.followingLink = ref}
-							style={{ display: "none" }}
-							to="/following"
-						/>
-						<i className={(active === "following") ?
-							"fas fa-eye menu-icon menu-icon-active" :
-							"fas fa-eye menu-icon"
-						}/>
-						<div className={(over === "following") ? ttOn : ttOff}>
-							<p className="menu-tooltip-text">following</p>
-						</div>
-					</div>
-					<div
-						className="menu-box menu-box-left"
+						className={(over === "integrity" && active !== "integrity") ?
+							"menu-box menu-box-left menu-box-over" :
+							"menu-box menu-box-left"
+						}
 						onClick={() => this.integrityLink.click()}
 						onMouseOver={this.hoverStatus.bind(this, "integrity")}
 						onMouseOut={this.hoverStatus.bind(this, "none")}>
@@ -153,6 +140,27 @@ class Status extends Component {
 						}/>
 						<div className={(over === "integrity") ? ttOn : ttOff}>
 							<p className="menu-tooltip-text">integrity</p>
+						</div>
+					</div>
+					<div
+						className={(over === "settings" && active !== "settings") ?
+							"menu-box menu-box-left menu-box-over" :
+							"menu-box menu-box-left"
+						}
+						onClick={() => this.settingsLink.click()}
+						onMouseOver={this.hoverStatus.bind(this, "settings")}
+						onMouseOut={this.hoverStatus.bind(this, "none")}>
+						<Link
+							innerRef={ref => this.settingsLink = ref}
+							style={{ display: "none"}}
+							to="/settings"
+						/>
+						<i className={(active === "settings") ?
+							"fas fa-cogs menu-icon menu-icon-active" :
+							"fas fa-cogs menu-icon"
+						}/>
+						<div className={(over === "settings") ? ttOn : ttOff}>
+							<p className="menu-tooltip-text">settings</p>
 						</div>
 					</div>
 				</div>

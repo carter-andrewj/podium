@@ -140,7 +140,7 @@ class Slider extends Component {
 			<div 
 				ref={ref => this.box = ref}
 				style={{
-					position: "absolute",
+					position: this.props.position || "absolute",
 					top: 0,
 					bottom: 0,
 					left: 0,

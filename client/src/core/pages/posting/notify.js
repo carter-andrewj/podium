@@ -94,7 +94,9 @@ class Notify extends Component {
 					style={{
 						background: this.state.data.getIn(["color", "main"])
 					}}>
-					{this.props.title}
+					<p className="notif-glyph-holder">
+						{this.props.title}
+					</p>
 				</div>
 				<div className="notif-message-holder">
 					<p className="notif-message">{this.props.msg}</p>

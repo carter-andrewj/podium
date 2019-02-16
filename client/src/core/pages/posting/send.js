@@ -1,4 +1,5 @@
-import React, { Component } from 'react';
+import React from 'react';
+import ImmutableComponent from '../../widgets/immutableComponent';
 import { Map, fromJS } from 'immutable';
 
 import Settings from 'settings';
@@ -20,7 +21,7 @@ const emptyCaret = Map(fromJS({
 	}
 }))
 
-const defState = Map(fromJS({
+const defState = {
 	raw: "",
 	focus: false,
 	highlight: null,
@@ -31,7 +32,7 @@ const defState = Map(fromJS({
 	html: "",
 	cost: 0,
 	references: {}
-}))
+}
 
 const refOrder = {
 	"mention": 0,
@@ -42,13 +43,10 @@ const refOrder = {
 
 
 
-class Send extends Component {
+class Send extends ImmutableComponent {
 
 	constructor() {
-		super()
-		this.state = {
-			data: defState
-		}
+		super(defState)
 
 		this.setFocus = this.setFocus.bind(this);
 		this.clearFocus = this.clearFocus.bind(this);
@@ -61,13 +59,6 @@ class Send extends Component {
 		this.sendPost = this.sendPost.bind(this);
 	}
 
-
-	updateState(up, callback) {
-		this.setState(
-			({data}) => { return {data: up(data)} },
-			callback
-		);
-	}
 
 
 	componentDidMount() {
@@ -93,7 +84,7 @@ class Send extends Component {
 
 	// Restore placeholder in event of unfocus with no text
 	clearFocus(event) {
-		if (this.props.replyingTo && this.state.data.get("raw") === "") {
+		if (this.props.replyingTo && this.getState("raw") === "") {
 
 			// This timer prevents the box being closed by a
 			// loss of focus caused by the user clicking the
@@ -148,8 +139,8 @@ class Send extends Component {
 		//		 position and subsequent editing
 
 		// Get current post string
-		let raw = this.state.data.get("raw");
-		var references = this.state.data.get("references");
+		let raw = this.getState("raw");
+		var references = this.getState("references");
 
 		// Get cursor and selection position
 		let cursor;
@@ -226,7 +217,7 @@ class Send extends Component {
 		// Deconstruct post references
 		var oldrefs = Map({});
 		var newrefs = Map({});
-		if (raw !== this.state.data.get("raw")) {
+		if (raw !== this.getState("raw")) {
 			markup.filter(w => w.reference)
 				.forEach(w => {
 					if (references.has(w.word)) {
@@ -375,37 +366,21 @@ class Send extends Component {
 	validateMention(id) {
 		id = id.substring(1, id.length);
 		return new Promise((resolve) => {
-			this.props.getProfile(id, true)
-				.then(profile => {
-					if (profile) {
-						resolve(true);
-					} else {
-						resolve(false);
-					}
-				})
+			this.props.podium
+				.isUser(id)
+				.then(result => resolve(result))
 				.catch(error => {
 					console.error(error)
 					resolve(false)
 				})
-		});
+		})
 	}
 
 
 	validateTopic(id) {
 		id = id.substring(1, id.length);
 		return new Promise((resolve) => {
-			this.props.getTopic(id, true)
-				.then(topic => {
-					if (topic) {
-						resolve(true);
-					} else {
-						resolve(false);
-					}
-				})
-				.catch(error => {
-					console.error(error)
-					resolve(false)
-				})
+			resolve(true)
 		});
 	}
 
@@ -413,7 +388,7 @@ class Send extends Component {
 	validateLink(url) {
 		return new Promise((resolve) => {
 			//TODO - Validate URLs
-			resolve(true);
+			resolve(true)
 		});
 	}
 
@@ -425,21 +400,29 @@ class Send extends Component {
 		//TODO - Handle send failure
 
 		// Check post validity
-		if (this.state.data.get("valid") === "passed") {
+		if (this.getState("valid") === "passed") {
 
-			this.updateState(state =>state
-				.set("sending", true)
-			);
+			this.updateState(state => state.set("sending", true))
+
+			// Get post data
+			const content = this.getState("raw")
+			const references = Map()
+			const parent = this.props.replyingTo
 
 			// Dispatch post to radix net
-			this.props.sendPost(this.state.data.get("raw"),
-							    this.props.replyingTo)
+			this.props
+				.sendPost(content, references, parent)
 				.then(() => {
+					console.log("resolved")
 					if (this.props.replyingTo) {
 						this.props.hideReply();
 					} else {
-						this.updateState(() => defState);
+						this.updateState(() => fromJS(defState));
 					}
+				})
+				.catch(error => {
+					console.error(error)
+					//TODO - Handle failed sending
 				});
 
 		}
@@ -450,39 +433,32 @@ class Send extends Component {
 	componentDidUpdate(lastProps, lastState) {
 
 		// Place cursor if send box is focussed
-		if (this.state.data.get("focus")) {
+		if (this.getState("focus")) {
 			let range = document.createRange();
 			let sel = window.getSelection();
 			//TODO - Stop this falling back to the master Send box when
 			//		 the user is typing a reply and a render/update occurs
 			range.setStart(
 				document
-					.getElementById(this.state.data
-						.getIn(["caret", "start", "node"])
-					)
+					.getElementById(this.getState("caret", "start", "node"))
 					.firstChild,
-				this.state.data
-					.getIn(["caret", "start", "offset"])
-			);
+				this.getState("caret", "start", "offset")
+			)
 			range.setEnd(
 				document
-					.getElementById(this.state.data
-						.getIn(["caret", "end", "node"])
-					)
+					.getElementById(this.getState("caret", "end", "node"))
 					.firstChild,
-				this.state.data
-					.getIn(["caret", "end", "offset"])
-			);
+				this.getState("caret", "end", "offset")
+			)
 			range.collapse(true);
 			sel.removeAllRanges();
 			sel.addRange(range);
 		}
 
 		// Validate post
-		const valid = (this.state.data.get("raw") === "") ?
+		const valid = (this.getState("raw") === "") ?
 			"pending" : 
-			this.state.data
-				.get("references")
+			this.getState("references")
 				.reduce((val, ref) => {
 					if (val === "pending" || val === "failed") {
 						return val;
@@ -490,7 +466,7 @@ class Send extends Component {
 						return ref.get("valid");
 					}
 				}, "passed");
-		if (valid !== this.state.data.get("valid")) {
+		if (valid !== this.getState("valid")) {
 			this.updateState(state => state
 				.set("valid", valid)
 			);
@@ -501,425 +477,412 @@ class Send extends Component {
 
 	render() {
 
-		// Return sending message after send
-		if (this.state.data.get("sending") && this.props.replyingTo) {
-
-			return <div className="post-sending">
-				Sending...
-				<p className="sending-spinner-holder">
-					<span className="far fa-compass sending-spinner"></span>
-				</p>
-			</div>
-
+		// Build post content
+		let content;
+		if (!(this.getState("focus")) && this.getState("raw") === "") {
+			content = '<p id="post-line-0" class="post-input-line post-input-placeholder">' +
+				'Post something new...' +
+			'</p>';
+		} else if (this.getState("raw") === "") {
+			content = '<p id="post-line-0" class="post-input-line post-input-line-empty">' +
+				'<span id="post-item-0">' + String.fromCharCode(8203) +
+				'</span>' +
+			'</p>';
 		} else {
-
-			// Build post content
-			let content;
-			if (!(this.state.data.get("focus")) && this.state.data.get("raw") === "") {
-				content = '<p id="post-line-0" class="post-input-line post-input-placeholder">' +
-					'Post something new...' +
-				'</p>';
-			} else if (this.state.data.get("raw") === "") {
-				content = '<p id="post-line-0" class="post-input-line post-input-line-empty">' +
-					'<span id="post-item-0">' + String.fromCharCode(8203) +
-					'</span>' +
-				'</p>';
-			} else {
-				content = '<p' +
-					' id="post-line-0"' +
-					' class="post-input-line">' +
-					this.state.data.get("html") +
-				'</p>';
-			}
-
-			// Build post insert buttons
-			let insertHighlight;
-			switch (this.state.data.get("highlight")) {
-				case ("image"):
-					insertHighlight = "insert image";
-					break;
-				case ("gif"):
-					insertHighlight = "insert gif";
-					break;
-				case ("emoji"):
-					insertHighlight = "insert emoji";
-					break;
-				case ("video"):
-					insertHighlight = "insert video";
-					break;
-				case ("save"):
-					insertHighlight = "save to drafts";
-					break;
-				case ("discard"):
-					insertHighlight = "discard post";
-					break;
-				default:
-					insertHighlight = "";
-			}
-			let insertCard;
-			if (this.state.data.get("focus")) {
-				insertCard = <div className="input-support insert-card card">
-					<div className="insert-holder">
-						<div className="insert-panel insert-column-1">
-							<div
-								className="insert-button insert-image"
-								onMouseOver={this.highlight.bind(this, "image")}
-								onMouseOut={this.highlight.bind(this, null)}>
-								<span className="fas fa-image insert-button-icon"></span>
-							</div>
-							<div
-								className="insert-button insert-gif"
-								onMouseOver={this.highlight.bind(this, "gif")}
-								onMouseOut={this.highlight.bind(this, null)}>
-								<span className="fas fa-fire insert-button-icon"></span>
-							</div>
-						</div>
-						<div className="insert-panel insert-column-2">
-							<div
-								className="insert-button insert-emoji"
-								onMouseOver={this.highlight.bind(this, "emoji")}
-								onMouseOut={this.highlight.bind(this, null)}>
-								<span className="fas fa-smile insert-button-icon"></span>
-							</div>
-							<div
-								className="insert-button insert-video"
-								onMouseOver={this.highlight.bind(this, "video")}
-								onMouseOut={this.highlight.bind(this, null)}>
-								<span className="fas fa-video insert-button-icon"></span>
-							</div>
-						</div>
-						<div className="insert-panel insert-column-3">
-							<div
-								className="insert-button discard-post"
-								onMouseOver={this.highlight.bind(this, "discard")}
-								onMouseOut={this.highlight.bind(this, null)}>
-								<span className="fas fa-trash insert-button-icon"></span>
-							</div>
-							<div
-								className="insert-button save-post"
-								onMouseOver={this.highlight.bind(this, "save")}
-								onMouseOut={this.highlight.bind(this, null)}>
-								<span className="fas fa-save insert-button-icon"></span>
-							</div>
-						</div>
-						<div className="insert-highlight">
-							<p className="highlight-text">
-								{insertHighlight}
-							</p>
-						</div>
-					</div>
-				</div>
-			}
-
-			// Build balances panel
-			let balanceHighlight;
-			switch (this.state.data.get("highlight")) {
-				case ("pod"):
-					balanceHighlight = <span className="pod-text">
-						pay with POD only
-					</span>
-					break;
-				case ("podaud"):
-					balanceHighlight = <span>
-						<span className="pod-text">pay with POD, </span>
-						<span className="aud-text">then AUD</span>
-					</span>
-					break;
-				case ("audpod"):
-					balanceHighlight = <span>
-						<span className="aud-text">pay with AUD, </span>
-						<span className="pod-text">then POD</span>
-					</span>
-					break;
-				case ("aud"):
-					balanceHighlight = <span className="aud-text">
-						pay with AUD only
-					</span>
-					break;
-				default:
-					balanceHighlight = "";
-			}
-			let balanceCard;
-			if (this.state.data.get("focus")) {
-				balanceCard = <div className="input-support balance-card card">
-					<div className="balance-panel">
-						<p className="balance-title pod-title">
-							<span className="balance-title-text">POD</span>
-						</p>
-						<p className="balance-number pod-balance">
-							<span className="balance-number-text">
-								{this.props.activeUser.getIn(["balance", "pod"])}
-							</span>
-						</p>
-						<div className="pay-button-panel">
-							<div
-								className="pay-button pay-button-pod"
-								onMouseOver={this.highlight.bind(this, "pod")}
-								onMouseOut={this.highlight.bind(this, null)}>
-								<span className="fas fa-circle pay-icon-pod pay-button-icon"></span>
-							</div>
-							<div
-								className="pay-button pay-button-podaud"
-								onMouseOver={this.highlight.bind(this, "podaud")}
-								onMouseOut={this.highlight.bind(this, null)}>
-								<span className="fas fa-circle pay-button-icon pay-icon-aud pay-icon-right"></span>
-								<span className="fas fa-dot-circle pay-button-icon pay-icon-pod pay-icon-left"></span>
-							</div>
-						</div>
-					</div>
-					<div className="balance-panel">
-						<p className="balance-title aud-title">
-							<span className="balance-title-text">AUD</span>
-						</p>
-						<p className="balance-number aud-balance">
-							<span className="balance-number-text">
-								{this.props.activeUser.getIn(["balance", "aud"])}
-							</span>
-						</p>
-						<div className="pay-button-panel">
-							<div
-								className="pay-button pay-button-audpod"
-								onMouseOver={this.highlight.bind(this, "audpod")}
-								onMouseOut={this.highlight.bind(this, null)}>
-								<span className="fas fa-circle pay-button-icon pay-icon-pod pay-icon-right"></span>
-								<span className="fas fa-dot-circle pay-button-icon pay-icon-aud pay-icon-left"></span>	
-							</div>
-							<div
-								className="pay-button pay-button-aud"
-								onMouseOver={this.highlight.bind(this, "aud")}
-								onMouseOut={this.highlight.bind(this, null)}>
-								<span className="fas fa-circle pay-button-icon pay-icon-aud"></span>
-							</div>
-						</div>
-					</div>
-					<div className="balance-highlight">
-						<p className="highlight-text">
-							{balanceHighlight}
-						</p>
-					</div>
-				</div>
-			}
-
-			// Build post validation
-			//TODO - Allow users to "ignore" a validation
-			//		 failure and have the associated reference
-			//		 just be treated like normal text
-			//TODO - Allow users to create topics directly from
-			//		 a failed-topic-validation notification
-			const validation = this.state.data
-				.get("references")
-				.sort((a, b) => {
-					const aTypeOrd = refOrder[a.get("type")];
-					const bTypeOrd = refOrder[b.get("type")];
-					if (aTypeOrd > bTypeOrd) {
-						return 1
-					} else if (aTypeOrd < bTypeOrd) {
-						return -1
-					} else if (a.get("id") > b.get("id")) {
-						return 1
-					} else {
-						return -1
-					}
-				})
-				.map((r) => {
-
-					// Build notifications
-					let notif;
-					switch (r.get("type")) {
-
-						// Surface mention validation
-						case ("mention"):
-							if (r.get("valid") === "pending") {
-								notif = <Notify
-									key={r.get("id")}
-									stage="pending"
-									title={<span className="fas fa-at notif-glyph"></span>}
-									msg={<span>
-										Validating User <strong>{r.get("id")}</strong>
-									</span>}
-									color={Settings.colors.darkGrey}
-								/>
-							} else if (r.get("valid") === "passed") {
-								notif = <Notify
-									key={r.get("id")}
-									stage="passed"
-									title={<span className="fas fa-at notif-glyph"></span>}
-									msg={<span>
-										Found user <strong>{r.get("id")}</strong>
-									</span>}
-									color={Settings.colors.green}
-								/>
-							} else {
-								notif = <Notify
-									key={r.get("id")}
-									stage="failed"
-									title={<span className="fas fa-at notif-glyph"></span>}
-									msg={<span>
-										User <strong>{r.get("id")}</strong> not found
-									</span>}
-									color={Settings.colors.red}
-								/>
-							} 
-							break;
-
-						// Surface Topic validation
-						case ("topic"):
-							if (r.get("valid") === "pending") {
-								notif = <Notify
-									key={r.get("id")}
-									stage="pending"
-									title={<span className="fas fa-hashtag notif-glyph"></span>}
-									msg={<span>
-										Validating Topic <strong>{r.get("id")}</strong>
-									</span>}
-									color={Settings.colors.darkGrey}
-								/>
-							} else if (r.get("valid") === "passed") {
-								notif = <Notify
-									key={r.get("id")}
-									stage="passed"
-									title={<span className="fas fa-hashtag notif-glyph"></span>}
-									msg={<span>
-										Found topic <strong>{r.get("id")}</strong>
-									</span>}
-									color={Settings.colors.tan}
-								/>
-							} else {
-								notif = <Notify
-									key={r.get("id")}
-									stage="failed"
-									title={<span className="fas fa-hashtag notif-glyph"></span>}
-									msg={<span>
-										Topic <strong>{r.get("id")}</strong> not found
-									</span>}
-									color={Settings.colors.red}
-								/>
-							}
-							break;
-
-						// Surface Link validation
-						case ("link"):
-							if (r.get("valid") === "pending") {
-								notif = <Notify
-									key={r.get("id")}
-									stage="pending"
-									title={<span className="fa fa-link notif-glyph"></span>}
-									msg={<span>
-										Validating URL <strong>{r.get("id")}</strong>
-									</span>}
-									color={Settings.colors.darkGrey}
-								/>
-							} else if (r.get("valid") === "passed") {
-								notif = <Notify
-									key={r.get("id")}
-									stage="passed"
-									title={<span className="fa fa-link notif-glyph"></span>}
-									msg={<span>
-										Found URL <strong>{r.get("id")}</strong>
-									</span>}
-									color={Settings.colors.blue}
-								/>
-							} else {
-								notif = <Notify
-									key={r.get("id")}
-									stage="failed"
-									title={<span className="fa fa-link notif-glyph"></span>}
-									msg={<span>
-										URL <strong>{r.get("id")}</strong> does not exist
-									</span>}
-									color={Settings.colors.red}
-								/>
-							}
-							break;
-
-						default:
-							notif = null;
-
-					}
-					return notif;
-				})
-				.filter(n => n)
-				.toList();
-
-			const inputClass = (this.state.data.get("focus") ||
-				                this.state.data.get("raw") !== "") ?
-				" post-input-open" :
-				" post-input-closed";
-			const validationClass = (validation.size > 0) ?
-				" post-input-with-validations" : "";
-
-			// Calculate border color
-			let borderClass = "";
-			let buttonClass = "";
-			let borderClassVal = "";
-			if (this.state.data.get("valid") === "failed") {
-				borderClass = " post-input-border-failed"
-				buttonClass = " post-input-button-failed"
-			} else if (this.state.data.get("valid") === "passed") {
-				borderClass = " post-input-border-passed"
-				buttonClass = " post-input-button-passed"
-			} else {
-				borderClass = " post-input-border-pending"
-				buttonClass = " post-input-button-pending"
-			}
-			if (validation.size === 0) {
-				borderClassVal = " post-validation-hide"
-			}
-
-			// Set button text
-			let buttonText;
-			if (this.props.replyingTo) {
-				if (this.props.replyingTo.get("owned")) {
-					buttonText = "thread";
-				} else {
-					buttonText = "reply";
-				}
-			} else {
-				buttonText = "post";
-			}
-
-			// Build footer
-			const costOffset = (validation.size > 0) ? ((validation.size * -2.5) - 0.15) : 0;
-			const footer = <div className="post-input-footer">
-				<p
-					className="post-input-cost"
-					style={{transform: "translate(0," + costOffset + "em)"}}>
-					{this.state.data.get("cost")} <span className="fa fa-coins post-input-cost-icon"></span>
-				</p>
-				<button
-					className={"def-button green-button post-input-button" + buttonClass}
-					onClick={this.sendPost.bind(this)}>
-					{buttonText}
-				</button>
-			</div>
-
-	    	// Render
-			return (
-				<div ref="send" className="input-col">
-					{balanceCard}
-					{insertCard}
-					<div
-						contentEditable="true"
-						suppressContentEditableWarning={true}
-						ref={(input) => { this.input = input; }}
-						className={"post-input" + inputClass +
-							validationClass + borderClass}
-						onFocus={this.setFocus.bind(this)}
-						onBlur={this.clearFocus.bind(this)}
-						onKeyDown={this.keyDown.bind(this)}
-						onKeyPress={this.keyStroke.bind(this)}
-						dangerouslySetInnerHTML={{__html: content}}>
-					</div>
-					<div className={"post-validation-box" +
-							borderClass + borderClassVal}>
-						{validation}
-					</div>
-					{(this.state.data.get("focus") || this.state.data.get("raw") !== "") ?
-						footer : null}
-				</div>
-			);
-
+			content = '<p' +
+				' id="post-line-0"' +
+				' class="post-input-line">' +
+				this.getState("html") +
+			'</p>';
 		}
+
+		// // Build post insert buttons
+		// let insertHighlight;
+		// switch (this.getState("highlight")) {
+		// 	case ("image"):
+		// 		insertHighlight = "insert image";
+		// 		break;
+		// 	case ("gif"):
+		// 		insertHighlight = "insert gif";
+		// 		break;
+		// 	case ("emoji"):
+		// 		insertHighlight = "insert emoji";
+		// 		break;
+		// 	case ("video"):
+		// 		insertHighlight = "insert video";
+		// 		break;
+		// 	case ("save"):
+		// 		insertHighlight = "save to drafts";
+		// 		break;
+		// 	case ("discard"):
+		// 		insertHighlight = "discard post";
+		// 		break;
+		// 	default:
+		// 		insertHighlight = "";
+		// }
+		// let insertCard;
+		// if (this.getState("focus")) {
+		// 	insertCard = <div className="input-support insert-card card">
+		// 		<div className="insert-holder">
+		// 			<div className="insert-panel insert-column-1">
+		// 				<div
+		// 					className="insert-button insert-image"
+		// 					onMouseOver={this.highlight.bind(this, "image")}
+		// 					onMouseOut={this.highlight.bind(this, null)}>
+		// 					<span className="fas fa-image insert-button-icon"></span>
+		// 				</div>
+		// 				<div
+		// 					className="insert-button insert-gif"
+		// 					onMouseOver={this.highlight.bind(this, "gif")}
+		// 					onMouseOut={this.highlight.bind(this, null)}>
+		// 					<span className="fas fa-fire insert-button-icon"></span>
+		// 				</div>
+		// 			</div>
+		// 			<div className="insert-panel insert-column-2">
+		// 				<div
+		// 					className="insert-button insert-emoji"
+		// 					onMouseOver={this.highlight.bind(this, "emoji")}
+		// 					onMouseOut={this.highlight.bind(this, null)}>
+		// 					<span className="fas fa-smile insert-button-icon"></span>
+		// 				</div>
+		// 				<div
+		// 					className="insert-button insert-video"
+		// 					onMouseOver={this.highlight.bind(this, "video")}
+		// 					onMouseOut={this.highlight.bind(this, null)}>
+		// 					<span className="fas fa-video insert-button-icon"></span>
+		// 				</div>
+		// 			</div>
+		// 			<div className="insert-panel insert-column-3">
+		// 				<div
+		// 					className="insert-button discard-post"
+		// 					onMouseOver={this.highlight.bind(this, "discard")}
+		// 					onMouseOut={this.highlight.bind(this, null)}>
+		// 					<span className="fas fa-trash insert-button-icon"></span>
+		// 				</div>
+		// 				<div
+		// 					className="insert-button save-post"
+		// 					onMouseOver={this.highlight.bind(this, "save")}
+		// 					onMouseOut={this.highlight.bind(this, null)}>
+		// 					<span className="fas fa-save insert-button-icon"></span>
+		// 				</div>
+		// 			</div>
+		// 			<div className="insert-highlight">
+		// 				<p className="highlight-text">
+		// 					{insertHighlight}
+		// 				</p>
+		// 			</div>
+		// 		</div>
+		// 	</div>
+		// }
+
+		// // Build balances panel
+		// let balanceHighlight;
+		// switch (this.getState("highlight")) {
+		// 	case ("pod"):
+		// 		balanceHighlight = <span className="pod-text">
+		// 			pay with POD only
+		// 		</span>
+		// 		break;
+		// 	case ("podaud"):
+		// 		balanceHighlight = <span>
+		// 			<span className="pod-text">pay with POD, </span>
+		// 			<span className="aud-text">then AUD</span>
+		// 		</span>
+		// 		break;
+		// 	case ("audpod"):
+		// 		balanceHighlight = <span>
+		// 			<span className="aud-text">pay with AUD, </span>
+		// 			<span className="pod-text">then POD</span>
+		// 		</span>
+		// 		break;
+		// 	case ("aud"):
+		// 		balanceHighlight = <span className="aud-text">
+		// 			pay with AUD only
+		// 		</span>
+		// 		break;
+		// 	default:
+		// 		balanceHighlight = "";
+		// }
+		// let balanceCard;
+		// if (this.getState("focus")) {
+		// 	balanceCard = <div className="input-support balance-card card">
+		// 		<div className="balance-panel">
+		// 			<p className="balance-title pod-title">
+		// 				<span className="balance-title-text">POD</span>
+		// 			</p>
+		// 			<p className="balance-number pod-balance">
+		// 				<span className="balance-number-text">
+		// 					{0}
+		// 				</span>
+		// 			</p>
+		// 			<div className="pay-button-panel">
+		// 				<div
+		// 					className="pay-button pay-button-pod"
+		// 					onMouseOver={this.highlight.bind(this, "pod")}
+		// 					onMouseOut={this.highlight.bind(this, null)}>
+		// 					<span className="fas fa-circle pay-icon-pod pay-button-icon"></span>
+		// 				</div>
+		// 				<div
+		// 					className="pay-button pay-button-podaud"
+		// 					onMouseOver={this.highlight.bind(this, "podaud")}
+		// 					onMouseOut={this.highlight.bind(this, null)}>
+		// 					<span className="fas fa-circle pay-button-icon pay-icon-aud pay-icon-right"></span>
+		// 					<span className="fas fa-dot-circle pay-button-icon pay-icon-pod pay-icon-left"></span>
+		// 				</div>
+		// 			</div>
+		// 		</div>
+		// 		<div className="balance-panel">
+		// 			<p className="balance-title aud-title">
+		// 				<span className="balance-title-text">AUD</span>
+		// 			</p>
+		// 			<p className="balance-number aud-balance">
+		// 				<span className="balance-number-text">
+		// 					{0}
+		// 				</span>
+		// 			</p>
+		// 			<div className="pay-button-panel">
+		// 				<div
+		// 					className="pay-button pay-button-audpod"
+		// 					onMouseOver={this.highlight.bind(this, "audpod")}
+		// 					onMouseOut={this.highlight.bind(this, null)}>
+		// 					<span className="fas fa-circle pay-button-icon pay-icon-pod pay-icon-right"></span>
+		// 					<span className="fas fa-dot-circle pay-button-icon pay-icon-aud pay-icon-left"></span>	
+		// 				</div>
+		// 				<div
+		// 					className="pay-button pay-button-aud"
+		// 					onMouseOver={this.highlight.bind(this, "aud")}
+		// 					onMouseOut={this.highlight.bind(this, null)}>
+		// 					<span className="fas fa-circle pay-button-icon pay-icon-aud"></span>
+		// 				</div>
+		// 			</div>
+		// 		</div>
+		// 		<div className="balance-highlight">
+		// 			<p className="highlight-text">
+		// 				{balanceHighlight}
+		// 			</p>
+		// 		</div>
+		// 	</div>
+		// }
+
+		// Build post validation
+		//TODO - Allow users to "ignore" a validation
+		//		 failure and have the associated reference
+		//		 just be treated like normal text
+		//TODO - Allow users to create topics directly from
+		//		 a failed-topic-validation notification
+		const validation = this.getState("references")
+			.sort((a, b) => {
+				const aTypeOrd = refOrder[a.get("type")];
+				const bTypeOrd = refOrder[b.get("type")];
+				if (aTypeOrd > bTypeOrd) {
+					return 1
+				} else if (aTypeOrd < bTypeOrd) {
+					return -1
+				} else if (a.get("id") > b.get("id")) {
+					return 1
+				} else {
+					return -1
+				}
+			})
+			.map((r) => {
+
+				// Build notifications
+				let notif;
+				switch (r.get("type")) {
+
+					// Surface mention validation
+					case ("mention"):
+						if (r.get("valid") === "pending") {
+							notif = <Notify
+								key={r.get("id")}
+								stage="pending"
+								title={<span className="fas fa-at notif-glyph"></span>}
+								msg={<span>
+									Validating User <strong>{r.get("id")}</strong>
+								</span>}
+								color={Settings.colors.darkGrey}
+							/>
+						} else if (r.get("valid") === "passed") {
+							notif = <Notify
+								key={r.get("id")}
+								stage="passed"
+								title={<span className="fas fa-at notif-glyph"></span>}
+								msg={<span>
+									Found user <strong>{r.get("id")}</strong>
+								</span>}
+								color={Settings.colors.green}
+							/>
+						} else {
+							notif = <Notify
+								key={r.get("id")}
+								stage="failed"
+								title={<span className="fas fa-at notif-glyph"></span>}
+								msg={<span>
+									User <strong>{r.get("id")}</strong> not found
+								</span>}
+								color={Settings.colors.red}
+							/>
+						} 
+						break;
+
+					// Surface Topic validation
+					case ("topic"):
+						if (r.get("valid") === "pending") {
+							notif = <Notify
+								key={r.get("id")}
+								stage="pending"
+								title={<span className="fas fa-hashtag notif-glyph"></span>}
+								msg={<span>
+									Validating Topic <strong>{r.get("id")}</strong>
+								</span>}
+								color={Settings.colors.darkGrey}
+							/>
+						} else if (r.get("valid") === "passed") {
+							notif = <Notify
+								key={r.get("id")}
+								stage="passed"
+								title={<span className="fas fa-hashtag notif-glyph"></span>}
+								msg={<span>
+									Found topic <strong>{r.get("id")}</strong>
+								</span>}
+								color={Settings.colors.tan}
+							/>
+						} else {
+							notif = <Notify
+								key={r.get("id")}
+								stage="failed"
+								title={<span className="fas fa-hashtag notif-glyph"></span>}
+								msg={<span>
+									Topic <strong>{r.get("id")}</strong> not found
+								</span>}
+								color={Settings.colors.red}
+							/>
+						}
+						break;
+
+					// Surface Link validation
+					case ("link"):
+						if (r.get("valid") === "pending") {
+							notif = <Notify
+								key={r.get("id")}
+								stage="pending"
+								title={<span className="fa fa-link notif-glyph"></span>}
+								msg={<span>
+									Validating URL <strong>{r.get("id")}</strong>
+								</span>}
+								color={Settings.colors.darkGrey}
+							/>
+						} else if (r.get("valid") === "passed") {
+							notif = <Notify
+								key={r.get("id")}
+								stage="passed"
+								title={<span className="fa fa-link notif-glyph"></span>}
+								msg={<span>
+									Found URL <strong>{r.get("id")}</strong>
+								</span>}
+								color={Settings.colors.blue}
+							/>
+						} else {
+							notif = <Notify
+								key={r.get("id")}
+								stage="failed"
+								title={<span className="fa fa-link notif-glyph"></span>}
+								msg={<span>
+									URL <strong>{r.get("id")}</strong> does not exist
+								</span>}
+								color={Settings.colors.red}
+							/>
+						}
+						break;
+
+					default:
+						notif = null;
+
+				}
+				return notif;
+			})
+			.filter(n => n)
+			.toList();
+
+		const inputClass = (this.getState("focus") ||
+			                this.getState("raw") !== "") ?
+			" post-input-open" :
+			" post-input-closed";
+		const validationClass = (validation.size > 0) ?
+			" post-input-with-validations" : "";
+
+		// Calculate border color
+		let borderClass = "";
+		let buttonClass = "";
+		let borderClassVal = "";
+		if (this.getState("valid") === "failed") {
+			borderClass = " post-input-border-failed"
+			buttonClass = " post-input-button-failed"
+		} else if (this.getState("valid") === "passed") {
+			borderClass = " post-input-border-passed"
+			buttonClass = " post-input-button-passed"
+		} else {
+			borderClass = " post-input-border-pending"
+			buttonClass = " post-input-button-pending"
+		}
+		if (validation.size === 0) {
+			borderClassVal = " post-validation-hide"
+		}
+
+		// Set button text
+		let buttonText;
+		if (this.props.replyingTo) {
+			if (this.props.replyingTo.get("owned")) {
+				buttonText = "thread";
+			} else {
+				buttonText = "reply";
+			}
+		} else {
+			buttonText = "post";
+		}
+
+		// Build footer
+		const costOffset = (validation.size > 0) ? ((validation.size * -2.5) - 0.15) : 0;
+		const footer = <div className="post-input-footer">
+			<p
+				className="post-input-cost"
+				style={{transform: "translate(0," + costOffset + "em)"}}>
+				{this.getState("cost")} <span className="fa fa-coins post-input-cost-icon"></span>
+			</p>
+			<button
+				className={"def-button green-button post-input-button" + buttonClass}
+				onClick={this.sendPost.bind(this)}>
+				{buttonText}
+			</button>
+		</div>
+
+    	// Render
+		return (
+			<div ref="send" className="input-col">
+				<div
+					contentEditable="true"
+					suppressContentEditableWarning={true}
+					ref={(input) => { this.input = input; }}
+					className={"post-input" + inputClass +
+						validationClass + borderClass}
+					onFocus={this.setFocus.bind(this)}
+					onBlur={this.clearFocus.bind(this)}
+					onKeyDown={this.keyDown.bind(this)}
+					onKeyPress={this.keyStroke.bind(this)}
+					dangerouslySetInnerHTML={{ __html: content }}>
+				</div>
+				<div className={"post-validation-box" +
+						borderClass + borderClassVal}>
+					{validation}
+				</div>
+				{(this.getState("focus") || this.getState("raw") !== "") ?
+					footer : null}
+				{this.getState("sending") ?
+					<div className="post-input-loading-mask" />
+					: null
+				}
+			</div>
+		)
 
 	}
 
@@ -927,11 +890,11 @@ class Send extends Component {
 	componentWillUnmount () {
 
 		// Kill hider timer when send box removed externally
-		if (this.state.data.get("hider")) {
-			clearTimeout(this.state.data.get("hider"));
+		if (this.getState("hider")) {
+			clearTimeout(this.getState("hider"));
 		}
 
-		// Save to drafts
+		//TODO - Save to drafts
 
 	}
 

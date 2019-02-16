@@ -1,13 +1,10 @@
-import React, { Component } from 'react';
-import { Link } from 'react-router-dom';
+import React from 'react';
+import ImmutableComponent from '../core/widgets/immutableComponent';
 
 import { Map, fromJS } from 'immutable';
 
 import Cropper from 'react-easy-crop';
 
-
-import Slider from '../core/widgets/slider';
-import Fader from '../core/widgets/fader';
 
 
 
@@ -31,7 +28,7 @@ const bioContent = {
 		" all the cars in Sweden",
 		" any moons",
 		" Antarctica",
-		" posessions, they own me",
+		" posessions",
 		" the secret of fire",
 		" more than one batmobile",
 		" that famous thing that got stolen recently.."
@@ -44,7 +41,7 @@ const bioContent = {
 		" well - I work spectacularly",
 		" as a spy... honest",
 		" in marketing for a multinational unicorn saddle company",
-		", it's more like paid procrastination",
+		" in fish dentistry",
 		" as a PA for Elvis",
 		" below a temperature of 5 Kelvin"
 	],
@@ -53,7 +50,7 @@ const bioContent = {
 		" divide by zero",
 		" move objects with my mind",
 		" deplantricate, because I don't know what that is",
-		" become King of Canada, apparently",
+		" become Grand Supreme Ultileader of Canada, apparently",
 		" forgive that celebrity for that thing they did last week",
 		" conjure giant canaries out of thin air, they were chickens painted yellow",
 		" understand why Jack didn't get on the door too, he could clearly fit",
@@ -97,12 +94,6 @@ async function getCroppedImage(imageSrc, pixelCrop) {
 	// As Base64 string 
 	return canvas.toDataURL('image/png');
 
-	// As a blob
-	// return new Promise((resolve, reject) => {
-	// 	canvas.toBlob(file => {
-	// 		resolve(URL.createObjectURL(file))
-	// 	}, 'image/jpeg')
-	// })
 }
 
 
@@ -113,45 +104,35 @@ let timer;
 const reader = new FileReader();
 
 
-class Register extends Component {
 
-	constructor(props) {
-		super();
-		this.state = {
-			data: Map(fromJS({
+class Register extends ImmutableComponent {
 
-				imageURL: null,
-				image: null,
-				imageCrop: { x: 0, y: 0 },
-				imageZoom: 1.1,
-				imagePixels: null,
-				cropping: false,
+	constructor() {
+		super({
 
-				at: false,
-				target: null,
+			show: false,
+			lock: false,
+			loading: false,
+			error: null,
 
-				valid: false,
-				errors: {
-					username: null,
-					password: null,
-					displayName: null
-				},
+			at: false,
+			target: null,
 
-				exit: false
+			imageURL: null,
+			image: null,
+			imageCrop: { x: 0, y: 0 },
+			imageZoom: 1.1,
+			imagePixels: null,
+			cropping: false,
 
-			}))
-		}
-		this.register = this.register.bind(this);
-		this.showAt = this.showAt.bind(this);
-		this.hideAt = this.hideAt.bind(this);
-	}
+			valid: false,
+			errors: {
+				username: null,
+				password: null,
+				displayName: null
+			},
 
-
-	updateState(up, callback) {
-		this.setState(
-			({data}) => { return { data: up(data) } },
-			callback
-		);
+		})
 	}
 
 
@@ -166,6 +147,7 @@ class Register extends Component {
 	}
 
 
+	
 	async register(event) {
 
 		// Stop form submission
@@ -176,7 +158,7 @@ class Register extends Component {
 		this.validate(true);
 
 		// Check validation
-		if (this.state.data.get("valid")) {
+		if (this.getState("valid")) {
 
 			// Get data from form
 			const id = this.username.value;
@@ -184,16 +166,16 @@ class Register extends Component {
 			const name = this.displayName.value;
 			var bio = this.bio.value;
 			if (bio === "") {
-				bio = this.state.data.get("bio")
+				bio = this.getState("bio")
 			}
 
 			// Build image
 			let picture;
 			let ext;
-			if (this.state.data.get("image")) {
+			if (this.getState("image")) {
 				const image = await getCroppedImage(
-					this.state.data.get("imageURL"),
-					this.state.data.get("imagePixels")
+					this.getState("imageURL"),
+					this.getState("imagePixels")
 				)
 				picture = image.split(",")[1]
 				ext = image.split(",")[0].split("/")[1].split(";")[0];
@@ -204,9 +186,10 @@ class Register extends Component {
 				state => state.set("loading", true),
 				() => this.props
 					.registerUser(id, pw, name, bio, picture, ext)
-					//TODO - Handle edge-case where registration
-					//		 succeeds, but signin-fails
-					.then(result => this.exit(result))
+					.then(callback => {
+						console.log("back in register")
+						this.props.exit(callback)
+					})
 					.catch(error => {
 						//TODO - More nuanced handling of errors
 						//		 occurring when creating user
@@ -224,8 +207,11 @@ class Register extends Component {
 	}
 
 
-	triggerValidation() {
-		clearTimeout(timer);
+
+// FORM VALIDATION
+
+	triggerValidation(event) {
+		clearTimeout(timer)
 		this.updateState(state => state
 			.set("errors", Map({
 				"username": null,
@@ -234,6 +220,20 @@ class Register extends Component {
 			}))
 		)
 		timer = setTimeout(() => this.validate(false), 500)
+	}
+
+
+	triggerValidationAlt(event) {
+		if (event.key === "Backspace") {
+			this.updateState(state => state
+				.set("errors", Map({
+					"username": null,
+					"password": null,
+					"displayName": null
+				}))
+			)
+			this.validate(false)
+		}
 	}
 
 
@@ -248,16 +248,39 @@ class Register extends Component {
 		const username = this.username.value;
 		if (username !== "") {
 			filled += 1
+
+			// Ensure username is at least the minimum length
 			if (username.length < 3) {
 				fail = true;
 				errorUsername = "username must be at least 3 characters"
+
+			// Ensure username is no greater than the maximum length
+			} else if (username.length > 30) {
+				fail = true;
+				errorUsername = "username cannot be longer than 30 characters"
+
+			// Ensure username contains no whitespace
+			} else if (username.split(/\s/).length > 1) {
+				fail = true;
+				errorUsername = "username cannot contain spaces"
+
+			// Ensure username contains no special characters (except - or _)
+			} else if (username.split(/[^A-Z0-9_-]/i).length > 1) {
+				fail = true;
+				errorUsername = "username contains invalid character"
+
+			// Ensure username is not already taken
 			} else {
-				//TODO - Check if username is already taken
-				//TODO - Ensure username contains no whitespace
-				//TODO - Ensure username contains only a limited set
-				//		 of special characters
+				this.props.podium
+					.isUser(username)
+					.then(result => { if (result) {
+						this.updateState(state => state
+							.set("valid", false)
+							.setIn(["errors", "username"], "username unavailable")
+						)
+					}})
+					.catch(error => console.error(error))
 			}
-			//TODO - Rest of username validation
 		} else if (forced) {
 			errorUsername = "username cannot be blank";
 		}
@@ -268,7 +291,7 @@ class Register extends Component {
 		let errorPassword;
 		let password;
 		const pw1 = this.password.value;
-		const pw2 = this.passConfirm.value;
+		const pw2 = this.passwordConfirm.value;
 		if (pw1 === "") {
 			password = pw2
 		} else {
@@ -276,14 +299,23 @@ class Register extends Component {
 		}
 		if (password !== "") {
 			filled += 1
+
+			// Ensure password is at least 6 characters
 			if (password.length < 6) {
 				fail = true;
 				errorPassword = "password must be at least 6 characters"
+
+			// Ensure password is no longer than maximum characters
+			} else if (password.length > 60) {
+				fail = true;
+				errorPassword = "password cannot be longer than 60 characters"
+
+			// Ensure passwords match
 			} else if (pw1 !== pw2 && pw1 !== "" && pw2 !== "") {
 				fail = true
 				errorPassword = "passwords do not match"
 			}
-			//TODO - Rest of password validation
+
 		} else if (forced) {
 			errorPassword = "password cannot be blank"
 		}
@@ -293,9 +325,17 @@ class Register extends Component {
 		const displayName = this.displayName.value;
 		if (displayName !== "") {
 			filled += 1
+
+			// Ensure display name is no longer than maximum characters
+			if (displayName.length > 60) {
+				fail = true
+				errorDisplayName = "display name cannot be longer than 60 characters"
+			}
+
 		} else if (forced) {
 			errorDisplayName = "display name cannot be blank"
 		}
+
 
 		// Check if form is complete
 		var valid = false;
@@ -313,6 +353,9 @@ class Register extends Component {
 
 	}
 
+
+
+// PROFILE PICTURE PROCESSING
 
 	preloadImage(event) {
 		const file = event.target.files[0];
@@ -335,37 +378,16 @@ class Register extends Component {
 		)
 	}
 
-
-	showAt() {
-		this.updateState(state => state.set("at", true))
-	}
-
-	hideAt() {
-		if (this.username.value === "") {
-			this.updateState(state => state.set("at", false))
-		}
-	}
-
-
-	exit(callback) {
-		this.updateState(
-			state => state.set("exit", true),
-			() => setTimeout(callback, 800)
-		);
-	}
-
-
-
 	onZoomChange(zoom) {
-		if (zoom !== this.state.data.get("imageZoom")) {
+		if (zoom !== this.getState("imageZoom")) {
 			this.updateState(state => state
 				.set("imageZoom", zoom))
 		}
 	}
 
 	onCropChange(crop) {
-		if (crop.x !== this.state.data.getIn(["imageCrop", "x"]) ||
-			crop.y !== this.state.data.getIn(["imageCrop", "y"])) {
+		if (crop.x !== this.getState("imageCrop", "x") ||
+			crop.y !== this.getState("imageCrop", "y")) {
 			this.updateState(state => state
 				.set("imageCrop", fromJS(crop)))
 		}
@@ -376,7 +398,6 @@ class Register extends Component {
 			.set("imagePixels", croppedAreaPixels)
 		)
 	}
-
 
 	showCropper() {
 		this.updateState(state => state
@@ -389,65 +410,196 @@ class Register extends Component {
 	}
 
 
+
+// SHOW/HIDE
+
 	highlight(target) {
 		this.updateState(state => state
 			.set("highlight", target))
 	}
 
 
+	showAt() {
+		this.lock()
+		this.updateState(state => state.set("at", true))
+	}
+
+
+	hideAt() {
+		this.unlock()
+		if (this.username.value === "") {
+			this.updateState(state => state.set("at", false))
+		}
+	}
+
+
+	show() {
+		this.updateState(state => state
+			.set("show", true)
+		)
+		if (!this.getState("lock")) {
+			this.username.focus()
+		}
+	}
+
+
+	hide() {
+		this.updateState(state => state
+			.set("error", null)
+			.set("show", false)
+		)
+	}
+
+
+	lock() {
+		this.updateState(state => state
+			.set("lock", true)
+		)
+	}
+
+
+	unlock() {
+		this.triggerValidation()
+		if (this.username.value === "" &&
+				this.password.value === "") {
+			this.updateState(state => state
+				.set("lock", false))
+		}
+	}
+
+
+	resetError() {
+		this.updateState(state => state
+			.set("error", null))
+	}
+
+
+
+
+// RENDER
+
 	render() {
 
-		const exit = this.state.data.get("exit")
+		const open = this.getState("show") || this.getState("lock")
+		const loading = this.getState("loading")
 
 		return (
-			<div ref="register" className="lobby-box">
-				<Slider
-					direction="top"
-					timeIn={0.4} delayIn={0.0}
-					timeOut={0.4} delayOut={0.4}
-					exit={exit}>
-					<div className="register-box card">
-						<Fader
-							timeIn={0.2} delayIn={0.4}
-							timeOut={0.2} delayOut={0.0}
-							exit={(this.state.data.get("loading")) || exit}>
-							<div
-								className="card register-back"
-								onMouseOver={this.highlight.bind(this, "back")}
-								onMouseOut={this.highlight.bind(this, null)}
-								onClick={this.exit.bind(this, () => this.lobbyRoute.click())}>
-								{(this.state.data.get("highlight") === "back") ?
-									<div className="register-caption register-caption-back">
-										cancel
-									</div> : null
-								}
-								<span className="fas fa-chevron-left back-icon"></span>
-								<Link
-									to="/"
-									innerRef={ref => this.lobbyRoute = ref}
-									style={{ display: "none "}}
+			<div
+				className="register-capture"
+				onMouseOver={this.show.bind(this)}
+				onMouseLeave={this.hide.bind(this)}>
+
+				<div className={open ?
+						"card register register-open" :
+						"card register register-closed"
+					}>
+
+					<form onSubmit={this.register.bind(this)}>
+
+						<div className={open ? 
+								"register-form register-form-open" :
+								"register-form register-form-closed"
+							}>
+
+							<div className="register-box register-box-id">
+								<p
+									className={this.getState("errors", "username") ?
+										"register-at register-at-error" :
+										(this.getState("at") && this.username && this.username.value !== "") ?
+											"register-at register-at-on" :
+											"register-at register-at-off"
+									}
+									onClick={() => this.username.focus()}>
+									{loading ?
+										<i className="fas fa-circle-notch register-loader" />
+										: "@"
+									}
+								</p>
+								<input
+									ref={ref => this.username = ref}
+									className={(this.username && this.username.value !== "") ?
+										(this.getState("errors", "username") ?
+											"register-id register-field register-field-error" :
+											"register-id register-field register-field-filled")
+										:
+										"register-id register-field register-field-empty"
+									}
+									onKeyPress={this.triggerValidation.bind(this)}
+									onKeyUp={this.triggerValidationAlt.bind(this)}
+									onFocus={this.showAt.bind(this)}
+									onBlur={this.hideAt.bind(this)}
+									placeholder="Username"
 								/>
+								<div className="register-error register-error-username">
+									{this.getState("errors", "username")}
+								</div>
 							</div>
-						</Fader>
-						<form onSubmit={this.register.bind(this)}>
-							<div className="register-top">
-								<div className="register-image-box">
-									{(this.state.data.get("imageURL")) ?
+
+							<div className="register-box register-box-password">
+								<input
+									ref={ref => this.password = ref}
+									type="password"
+									className={(this.password && this.password.value !== "") ?
+										(this.getState("errors", "password") ?
+											"register-password register-field register-field-error" :
+											"register-password register-field register-field-filled")
+										:
+										"register-password register-field register-field-empty"
+									}
+									onKeyPress={this.triggerValidation.bind(this)}
+									onFocus={loading ?
+										() => this.password.blur() :
+										this.lock.bind(this)
+									}
+									onBlur={this.unlock.bind(this)}
+									placeholder="Password..."
+								/>
+								<input
+									ref={ref => this.passwordConfirm = ref}
+									type="password"
+									className={(this.passwordConfirm && this.passwordConfirm.value !== "") ?
+										(this.getState("errors", "password") ?
+											"register-password register-field register-field-error" :
+											"register-password register-field register-field-filled")
+										:
+										"register-password register-field register-field-empty"
+									}
+									onMouseUp={() => {
+										if (this.password.value === "" && this.passwordConfirm.value === "") {
+											this.password.focus()
+										}
+									}}
+									onKeyPress={this.triggerValidation.bind(this)}
+									onFocus={loading ?
+										() => this.passwordConfirm.blur() :
+										this.lock.bind(this)
+									}
+									onBlur={this.unlock.bind(this)}
+									placeholder="Confirm Password..."
+								/>
+								<div className="register-error register-error-password">
+									{this.getState("errors", "password")}
+								</div>
+							</div>
+
+							<div className="register-box register-box-picture">
+								{this.getState("imageURL") ?
+									<div className="register-image-holder">
 										<div
 											className="register-cropper"
 											onMouseOver={this.showCropper.bind(this)}
 											onMouseLeave={this.hideCropper.bind(this)}>
 											<Cropper
-												image={this.state.data.get("imageURL")}
-												crop={this.state.data.get("imageCrop").toJS()}
-												zoom={this.state.data.get("imageZoom")}
+												image={this.getState("imageURL")}
+												crop={this.getState("imageCrop").toJS()}
+												zoom={this.getState("imageZoom")}
 												aspect={1}
 												showGrid={false}
 												onZoomChange={this.onZoomChange.bind(this)}
 												onCropChange={this.onCropChange.bind(this)}
 												onCropComplete={this.onCropComplete.bind(this)}
 											/>
-											{(this.state.data.get("cropping")) ?
+											{(this.getState("cropping")) ?
 												<div className="register-crop-overlay">
 													<div className="register-crop-message">
 														scroll to zoom
@@ -464,134 +616,102 @@ class Register extends Component {
 													</div>
 												</div> : null
 											}
-										</div> :
+										</div>
+									</div>
+									:
+									<div className="register-image-holder">
 										<img
 											className="register-image"
-											onClick={() => this.imageUpload.click()}
+											onClick={() => {
+												this.lock()
+												this.imageUpload.click()
+											}}
 											src="./images/profile-placeholder.png"
 											alt=""
 										/>
-									}
-									<input
-										ref={(ref) => this.imageUpload = ref}
-										style={{display: "none"}}
-										type='file'
-										accept="image/*"
-										onChange={this.preloadImage.bind(this)}
-									/>
-								</div>
-								<div className="register-username-box">
-									<div style={{position: "relative"}}>
-										<p
-											className={(this.state.data.get("at")) ?
-												"register-at register-at-on" :
-												"register-at register-at-off"}
-											onClick={() => this.username.focus()}>
-											@
-										</p>
-										<input
-											ref={(ref) => this.username = ref}
-											className="register-field register-id"
-											onKeyPress={this.triggerValidation.bind(this)}
-											onFocus={this.showAt.bind(this)}
-											onBlur={this.hideAt.bind(this)}
-											placeholder="Username"
-										/>
-										<div className="register-error register-error-username">
-											{this.state.data.getIn(["errors", "username"])}
-										</div>
 									</div>
-									<input
-										ref={(ref) => this.password = ref}
-										className="register-field register-password"
-										onKeyPress={this.triggerValidation.bind(this)}
-										placeholder="Password..."
-									/>
-									<input
-										ref={(ref) => this.passConfirm = ref}
-										className="register-field register-password"
-										onKeyPress={this.triggerValidation.bind(this)}
-										placeholder="Confirm Password..."
-									/>
-									<div className="register-error register-error-password">
-										{this.state.data.getIn(["errors", "password"])}
-									</div>
-								</div>
-							</div>
-							<div className="register-bottom-box">
+								}
 								<input
-									ref={(ref) => this.displayName = ref}
-									className="register-field register-name"
+									ref={ref => this.imageUpload = ref}
+									style={{ display: "none" }}
+									type='file'
+									accept="image/*"
+									onChange={this.preloadImage.bind(this)}
+								/>
+							</div>
+
+							<div className="register-box register-box-name">
+								<input
+									ref={ref => this.displayName = ref}
+									className={(this.displayName && this.displayName.value !== "") ?
+										(this.getState("errors", "displayName") ?
+											"register-name register-field register-field-error" :
+											"register-name register-field register-field-filled")
+										:
+										"register-name register-field register-field-empty"
+									}
 									onKeyPress={this.triggerValidation.bind(this)}
+									onFocus={loading ?
+										() => this.displayName.blur() :
+										this.lock.bind(this)
+									}
+									onBlur={this.unlock.bind(this)}
 									placeholder="Display Name"
 								/>
 								<div className="register-error register-error-displayname">
-									{this.state.data.getIn(["errors", "displayName"])}
+									{this.getState("errors", "displayName")}
 								</div>
+							</div>
+
+							<div className="register-box register-box-bio">
 								<textarea
-									ref={(ref) => this.bio = ref}
-									className="register-field register-bio"
-									placeholder={this.state.data.get("bio")}
+									maxLength={500}
+									ref={ref => this.bio = ref}
+									className={(this.bio && this.bio.value !== "") ?
+										(this.getState("errors", "bio") ?
+											"register-bio register-field register-field-error" :
+											"register-bio register-field register-field-filled")
+										:
+										"register-bio register-field register-field-empty"
+									}
+									onFocus={loading ?
+										() => this.bio.blur() :
+										this.lock.bind(this)
+									}
+									onBlur={this.unlock.bind(this)}
+									placeholder={this.getState("bio")}
 								/>
 							</div>
-							<Fader
-								timeIn={0.2} delayIn={0.4}
-								timeOut={0.2} delayOut={0.0}
-								exit={exit}>
-								{(!this.state.data.get("valid")) ?
-									<div
-										className="card register-button register-invalid"
-										onMouseOver={this.highlight.bind(this, "register")}
-										onMouseOut={this.highlight.bind(this, null)}
-										onClick={this.register.bind(this)}>
-										{(this.state.data.get("highlight") === "register") ?
-											<div className="register-caption register-caption-invalid">
-												form incomplete
-											</div> : null
-										}
-										<span className="fas fa-user-slash register-icon"></span>
-									</div> :
-									(this.state.data.get("loading")) ?
-										<div className="card register-button register-loading">
-											<img
-												className="register-loading-glyph"
-												src="./images/icon-glyph-green.png"
-												alt=""
-											/>
-											<div className="register-caption register-caption-valid">
-												creating @{this.username.value}
-											</div>
-										</div> :
-										<div
-											className="card register-button register-valid"
-											onMouseOver={this.highlight.bind(this, "register")}
-											onMouseOut={this.highlight.bind(this, null)}
-											onClick={this.register.bind(this)}>
-											{(this.state.data.get("highlight") === "register") ?
-											<div className="register-caption register-caption-valid">
-												create account
-											</div> : null
-										}
-											<span className="fas fa-user-plus register-icon"></span>
-										</div>
-								}
-							</Fader>
-							{(this.state.data.get("loading")) ?
-								<div className="register-loading-mask"></div>
-								: null
-							}
-							<button
-								type="submit"
-								style={{display: "none"}}
-							/>
-						</form>
+
+						</div>
+
+						<button
+							type="submit"
+							style={{ display: "none" }}
+						/>
+
+					</form>
+
+					<div
+						className={open ?
+							"register-icon-holder register-icon-holder-open" :
+							"register-icon-holder register-icon-holder-closed"
+						}
+						onClick={() => this.username.focus()}>
+						<i className="fas fa-user-plus register-icon" />
+						<span className="register-caption">sign up</span>
 					</div>
-				</Slider>
+
+					{loading ?
+						<div className="register-loading-mask"></div>
+						: null
+					}
+
+				</div>
+				
 			</div>
 		);
-
 	}
-
 }
 
 export default Register;

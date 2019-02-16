@@ -1,85 +1,136 @@
-import React, { Component } from 'react';
+import React from 'react';
+import ImmutableComponent from '../../../widgets/immutableComponent';
+
+import { Link } from 'react-router-dom';
+
+import FollowButton from '../../../widgets/buttons/followbutton';
+import Gauge from '../../../widgets/gauges/gauge';
 
 
 
 
-class ProfileCard extends Component {
 
-
-	componentDidMount() {
-		if (!("id" in this.props.user)) {
-			this.props.getProfile(this.props.user.get("address"));
-		}
-	}
+class ProfileCard extends ImmutableComponent {
 
 
 	render() {
 
 		// Check if user is loaded
-		return <div className="usercard card">
-			<div className="usercard-top">
-				<img
-					className="usercard-picture"
-					src={this.props.user.get("picture")}
-					alt=""
+		return <div
+			className={(this.props.side === "left") ?
+				"card profilecard profilecard-left" :
+				"card profilecard profilecard-right"}
+			onClick={() => {
+				if (this.profileLink) { this.profileLink.click() }
+			}}
+			>
+			{this.props.profile ?
+				<Link
+					to={`/user/${this.props.profile.get("id")}`}
+					innerRef={ref => this.profileLink = ref}
+					style={{ display: "none" }}
 				/>
-				<div className="usercard-gauges">
-					<div className="usercard-gauge affinity-gauge">
-						<div
-							className="affinity-gauge-box"
-							height={(100.0 * this.props.user.get("affinity")) + "%"}>
+				: null
+			}
+			<div className="profilecard-top">
+
+				<div className={(this.props.side === "left") ?
+						"profilecard-picture-holder profilecard-picture-holder-left" :
+						"profilecard-picture-holder profilecard-picture-holder-right"
+					}>
+					{this.props.profile ? 
+						<img
+							className={(this.props.side === "left") ?
+								"profilecard-picture profilecard-picture-left" :
+								"profilecard-picture profilecard-picture-right"
+							}
+							src={this.props.profile.get("pictureURL")}
+							alt=""
+						/>
+						:
+						<div className="profilecard-picture-loading-box">
+							<i className="fas fa-circle-notch profilecard-picture-loader" />
 						</div>
-						<p className="affinity-gauge-label">
-							<span className="fas fa-sync-alt"></span>
+					}
+				</div>
+
+				{this.props.profile ?
+					<div className={(this.props.side === "left") ?
+							"profilecard-gauges profilecard-gauges-left" :
+							"profilecard-gauges profilecard-gauges-right"
+						}>
+						<div className="profilecard-gauge-holder">
+							<Gauge
+								value={0.234}
+								icon="balance-scale"
+								caption="integrity"
+								captionPosition="bottom"
+							/>
+						</div>
+						{this.props.activeUser ?
+							<div className="profilecard-gauge-holder">
+								<Gauge
+									value={0.785}
+									icon="dna"
+									caption="affinity"
+									captionPosition="top"
+								/>
+							</div>
+							: null
+						}
+					</div>
+					: null
+				}
+
+				{this.props.user ?
+					<div className={(this.props.side === "left") ?
+							"profilecard-buttons profilecard-buttons-left" :
+							"profilecard-buttons profilecard-buttons-right"
+						}>
+
+						{this.props.activeUser ?
+							<div className="profile-button">
+								<FollowButton
+
+									activeUser={this.props.activeUser}
+									targetUser={this.props.user}
+
+									captionLocation={this.props.side}
+									captionOffset={1.4}
+
+									callback={this.props.reload}
+
+								/>
+							</div>
+							: null
+						}
+
+					</div>
+					: null
+				}
+
+			</div>
+
+			{this.props.profile ?
+				<div className="profilecard-content-holder">
+					<div className="profilecard-name">
+						<p className="profilecard-name-text">
+							{this.props.profile.get("name")}
 						</p>
 					</div>
-					<div className="usercard-gauge integrity-gauge">
-						<div
-							className="integrity-gauge-box"
-							height={(100.0 * this.props.user.get("integrity")) + "%"}>
-						</div>
-						<p className="integrity-gauge-label">
-							<span className="fas fa-sync-alt"></span>
+					<div className="profilecard-id">
+						<p className="profilecard-id-text">
+							@{this.props.profile.get("id")}
+						</p>
+					</div>
+					<div className="profilecard-bio-holder">
+						<p className="profilecard-bio">
+							{this.props.profile.get("bio")}
 						</p>
 					</div>
 				</div>
-			</div>
-			<div className="usercard-name-holder">
-				<p className="usercard-name">
-					{this.props.user.get("name")}
-					<span className="usercard-id">
-						@{this.props.user.get("id")}
-					</span>
-				</p>
-			</div>
-			<div className="usercard-bio-holder">
-				<p className="usercard-bio">
-					{this.props.user.get("bio")}
-				</p>
-			</div>
-			<div className="usercard-buttons">
-				<button
-					className="usercard-button profile-button"
-					onClick={this.props.setCoreMode.bind(this,
-						"profile", this.props.user)}>
-					<span className="fas fa-user"></span>
-				</button>
-				<button
-					className="usercard-button follow-button"
-					onClick={
-						(this.props.user.get("following")) ?
-							this.props.unfollowUser.bind(this, this.props.user) :
-							this.props.followUser.bind(this, this.props.user)
-					}>
-					<span className="fas fa-eye"></span>
-				</button>
-				<button
-					className="usercard-button follow-button"
-					onClick={this.props.followUser.bind(this,
-						this.props.user)}>
-					<span className="fas fa-eye"></span>
-				</button>
-			</div>
+				: null
+			}
 		</div>
 
 	}

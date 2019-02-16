@@ -253,7 +253,7 @@ export function markupPost(post) {
 							return {
 								word: word,
 								type: "topic",
-								reference: true,
+								reference: word.substring(1, word.length),
 								length: word.length,
 								line: Math.floor((l + 1.0) / 2.0),
 								depth: depth,
@@ -267,7 +267,7 @@ export function markupPost(post) {
 							return {
 								word: word,
 								type: "mention",
-								reference: true,
+								reference: word.substring(1, word.length),
 								length: word.length,
 								line: Math.floor((l + 1.0) / 2.0),
 								depth: depth,

@@ -1,183 +1,30 @@
-import React, { Component } from 'react';
+import React from 'react';
+import ImmutableComponent from './widgets/immutableComponent';
 import { withRouter } from 'react-router-dom';
-// import { Map, fromJS } from 'immutable';
 
 import Status from './nav/status';
 import Controls from './nav/controls';
 
-import Search from './search/search';
-// import SearchResults from './search/searchresults';
+import SearchHUD from './search/searchHUD';
+import AlertsHUD from './alerts/alertsHUD';
 
-import Alerts from './alerts/alerts';
-// import AlertsPage from './alerts/alertspage';
-
-// import Profile from './pages/user/profile/profile';
-// import Wallet from './pages/user/wallet/wallet';
-// import Followers from './pages/user/followers/followers';
-// import Following from './pages/user/following/following';
-// import Integrity from './pages/user/integrity/integrity';
-
-// import Feed from './pages/posting/feed';
-// import Topics from './pages/topics/topics';
-// import Governance from './pages/governance/governance';
-// import Settings from './pages/settings/settings';
-
-import Slider from './widgets/slider';
+import Slider from './widgets/animators/slider';
 import Fader from './widgets/fader';
 
 
 
 
-class _HUD extends Component {
+class _HUD extends ImmutableComponent {
 
-	// constructor() {
-	// 	super()
-	// 	this.state = {
-	// 		data: Map(fromJS({
-	// 			mode: "feed"
-	// 		}))
-	// 	}
-	// 	this.setCoreMode = this.setCoreMode.bind(this);
-	// }
+	constructor() {
+		super({ show: false })
+	}
 
-	// updateState(up, callback) {
-	// 	this.setState(
-	// 		({data}) => { return {data: up(data)} },
-	// 		callback
-	// 	);
-	// }
+	componentDidMount() {
 
-	// setCoreMode(mode) {
-	// 	this.updateState(state => state
-	// 		.set("mode", mode)
-	// 	);
-	// }
+	}
 
 	render() {
-
-		// let content;
-		// switch (this.state.data.get("mode")) {
-
-		// 	// Show the user profile
-		// 	case ("profile"):
-		// 		content = <Profile
-
-		// 			user={this.props.user}
-
-		// 			posts={this.props.records.get("posts")}
-		// 			users={this.props.records.get("users")}
-
-		// 			getProfile={this.props.getProfile}
-		// 			getPost={this.props.getPost}
-
-		// 			promotePost={this.props.promotePost}
-		// 			reportPost={this.props.reportPost}
-
-		// 			amendPost={this.props.amendPost}
-		// 			retractPost={this.props.retractPost}
-
-		// 		/>;
-		// 		break;
-
-		// 	// Show wallet
-		// 	case ("wallet"):
-		// 		content = <Wallet />;
-		// 		break;
-
-		// 	// Show followers
-		// 	case ("followers"):
-		// 		content = <Followers
-
-		// 			followerCount={this.props.user.get("followers")}
-		// 			followers={this.props.records.get("followers")}
-		// 			users={this.props.records.get("users")}
-
-		// 			getProfile={this.props.getProfile}
-		// 			followUser={this.props.followUser}
-		// 			unfollowUser={this.props.unfollowUser}
-
-		// 			setCoreMode={this.setCoreMode}
-
-		// 		/>;
-		// 		break;
-
-		// 	// Show users being followed
-		// 	case ("following"):
-		// 		content = <Following />;
-		// 		break;
-
-		// 	// Show permissions
-		// 	case ("integrity"):
-		// 		content = <Integrity />;
-		// 		break;
-
-
-
-		// 	// Show topics
-		// 	case ("topics"):
-		// 		content = <Topics />;
-		// 		break;			
-
-		// 	// Show rulebook
-		// 	case ("governance"):
-		// 		content = <Governance />;
-		// 		break;
-
-		// 	// Show settings
-		// 	case ("settings"):
-		// 		content = <Settings />;
-		// 		break;
-
-
-
-		// 	// Show search results
-		// 	case ("search"):
-		// 		content = <SearchResults
-		// 			search={this.props.search}
-		// 			data={this.props.searchData}
-		// 			setCoreMode={this.setCoreMode}
-		// 		/>;
-		// 		break;
-
-		// 	// Show alerts
-		// 	case ("alerts"):
-		// 		content = <AlertsPage />;
-		// 		break;
-
-
-
-		// 	// Otherwise, show the post feed
-		// 	default:
-		// 		content = <Feed
-
-		// 			activeUser={this.props.user}
-
-		// 			users={this.props.records.get("users")}
-		// 			posts={this.props.records.get("posts")}
-
-		// 			sendPost={this.props.sendPost}
-		// 			getPost={this.props.getPost}
-
-		// 			getProfileFromID={this.props.getProfileFromID}
-		// 			getTopicFromID={this.props.getTopicFromID}
-
-		// 			promotePost={this.props.promotePost}
-		// 			reportPost={this.props.reportPost}
-
-		// 			amendPost={this.props.amendPost}
-		// 			retractPost={this.props.retractPost}
-
-		// 			followUser={this.props.followUser}
-		// 			unfollowUser={this.props.unfollowUser}
-
-		// 			setCoreMode={this.setCoreMode}
-
-		// 		/>;
-
-		// }
-
-
-
 		return (
 			<div ref="core" className="demo-core">
 
@@ -187,48 +34,60 @@ class _HUD extends Component {
 					</div>
 				</div>
 
-				<Slider
-					direction="left"
-					time={0.6}>
-					<Status
-
-						active={this.props.location.path}
-
-						activeUser={this.props.activeUser}
-						
-					/>
-				</Slider>
-
-				<Slider
-					direction="right"
-					time={0.6}>
-					<Controls
-
-						active={this.props.location.path}
-
-						throwPopup={this.props.throwPopup}
-						signOut={this.props.signOut}
-
-					/>
-				</Slider>
-
 				<Fader time={0.5} delay={0.5}>
-					<Search
+					<SearchHUD
+
+						podium={this.props.podium}
+						activeUser={this.props.activeUser}
+
+						route={this.props.location.pathname}
+
+						getUser={this.props.getUser}
 
 						search={this.props.search}
+						resetSearch={this.props.resetSearch}
 
 						target={this.props.searchData.get("target")}
 						loading={this.props.searchData.get("loading")}
-						results={this.props.searchData.get("quickresults")}
+						results={this.props.searchData.get("results")}
 
 					/>
 				</Fader>
 
 				<Fader time={0.5} delay={0.5}>
-					<Alerts
+					<AlertsHUD
+
+						podium={this.props.podium}
+						activeUser={this.props.activeUser}
+
+						route={this.props.location.pathname}
+
+						getUser={this.props.getUser}
+
 						alerts={this.props.alerts}
+
 					/>
 				</Fader>
+
+				<Slider
+					offset={{ x: -5, y: 0 }}
+					position="fixed"
+					time={0.6}>
+					<Status
+						active={this.props.location.pathname}
+						activeUser={this.props.activeUser}
+					/>
+				</Slider>
+
+				<Slider
+					offset={{ x: 5, y: 0 }}
+					position="fixed"
+					time={0.6}>
+					<Controls
+						active={this.props.location.pathname}
+						signOut={this.props.signOut}
+					/>
+				</Slider>
 
 			</div>
 		);

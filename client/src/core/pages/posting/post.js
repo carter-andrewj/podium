@@ -1,35 +1,31 @@
-import React, { Component } from 'react';
+import React from 'react';
+import ImmutableComponent from '../../widgets/immutableComponent';
 import { Link } from 'react-router-dom';
 
-import { Map, fromJS } from 'immutable';
+import { Map } from 'immutable';
 
 import { markupPost, timeform } from 'utils';
 import Send from './send';
 
-// import UserCard from './references/mentions/usercard';
-// import TopicCard from './references/topics/topiccard';
-// import LinkCard from './references/links/linkcard';
 
 
 
-class Post extends Component {
+class Post extends ImmutableComponent {
 
 	constructor() {
-		super()
-		this.state = {
-			data: Map(fromJS({
-				post: null,
-				user: null,
-				highlight: "none",
-				html: null,
-				reply: false,
-				usercard: false,
-				refTimer: null,
-				refcard: false,
-				reference: {},
-				reacted: true
-			}))
-		}
+		super({
+			post: null,
+			user: null,
+			highlight: "none",
+			html: null,
+			reply: false,
+			usercard: false,
+			refTimer: null,
+			refcard: false,
+			reference: {},
+			links: {},
+			reacted: true
+		})
 		this.highlight = this.highlight.bind(this);
 		this.constructPost = this.constructPost.bind(this);
 		this.replyOn = this.replyOn.bind(this);
@@ -37,38 +33,27 @@ class Post extends Component {
 	}
 
 
-	updateState(up, callback) {
-		this.setState(
-			({data}) => { return {data: up(data)} },
-			callback
-		);
-	}
-
-	getState() {
-		const args = Array.prototype.slice.call(arguments)
-		if (args.length === 1) {
-			return this.state.data.get(args[0])
-		} else {
-			return this.state.data.getIn([...args])
-		}
-	}
-
-
 	componentWillMount() {
 
 		// Load the post and its author
-		this.props.getPost(this.props.post).then(post =>
-			this.props.getProfile(post.get("author")).then(profile =>
-				this.updateState(
-					state => state
-						.set("post", post)
-						.set("user", profile),
-					() => this.constructPost(
-						post.get("content")
-					)
-				)
-			)
-		)
+		// this.props.getPost(this.props.post).then(post =>
+		// 	this.props.getProfile(post.get("author")).then(profile =>
+		// 		this.updateState(
+		// 			state => state
+		// 				.set("post", post)
+		// 				.set("user", profile),
+		// 			() => this.constructPost(
+		// 				post.get("content")
+		// 			)
+		// 		)
+		// 	)
+		// )
+
+		this.props.getUser(this.props.post.authorAddress, false)
+			.then(user => this.updateState(state => state
+				.set("user", user)
+			))
+			.catch(error => console.error(error))
 
 	}
 
@@ -77,8 +62,8 @@ class Post extends Component {
 
 
 	showReference(reference) {
-		if (this.state.data.get("refTimer")) {
-			clearTimeout(this.state.data.get("refTimer"))
+		if (this.getState("refTimer")) {
+			clearTimeout(this.getState("refTimer"))
 		}
 		this.updateState(state => state
 			.set("reference", reference)
@@ -127,8 +112,9 @@ class Post extends Component {
 		)
 	}
 
-	getLink(id) {
-		return this.getState("links", id)
+	toLink(event, id) {
+		if (event) { event.stopPropagation() }
+		this.getState("links", id).click()
 	}
 
 
@@ -183,11 +169,11 @@ class Post extends Component {
 							key={wordID}
 							onMouseOver={this.showReference(p)}
 							onMouseOut={this.hideReference()}
-							onClick={() => this.getLink(p.word).click()}
+							onClick={(event) => this.toLink(event, p.reference)}
 							className="post-word post-mention">
 							<Link
 								to={`/user/${p.word}`}
-								innerRef={ref => this.makeLink(p.word, ref)}
+								innerRef={ref => this.makeLink(p.reference, ref)}
 								style={{ display: "none" }}
 							/>
 							{p.word}
@@ -200,11 +186,11 @@ class Post extends Component {
 							key={wordID}
 							onMouseOver={this.showReference(p)}
 							onMouseOut={this.hideReference()}
-							onClick={() => this.getLink(p.word).click()}
+							onClick={(event) => this.toLink(event, p.reference)}
 							className="post-word post-topic">
 							<Link
 								to={`/topic/${p.word}`}
-								innerRef={ref => this.makeLink(p.word, ref)}
+								innerRef={ref => this.makeLink(p.reference, ref)}
 								style={{ display: "none" }}
 							/>
 							{p.word}
@@ -263,7 +249,7 @@ class Post extends Component {
 		//TODO - URL previews
 
 		const user = this.getState("user");
-		const post = this.getState("post");
+		const post = this.props.post
 
 		let buttons;
 		const highlight = this.getState("highlight");

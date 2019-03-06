@@ -1,99 +1,13 @@
-import { RadixAccount, RadixUtil, RadixKeyPair } from 'radixdlt';
 
-import Settings from 'settings';
-
-
-
-function getAccount(seed) {
-	const hash = RadixUtil.hash(Buffer.from(seed));
-	return new RadixAccount(RadixKeyPair.fromPrivate(hash));
-}
+import { Set } from 'immutable';
 
 
 
 
-class ChannelSet {
-	master() {
-		return getAccount(Settings.ApplicationID)
-	}
-	faucet() {
-		return RadixAccount.fromAddress(
-			'9he94tVfQGAVr4xoUpG3uJfB2exURExzFV6E7dq4bxUWRbM5Edd', true);
-	}
+const urlRegex = /[-a-zA-Z0-9@:%_+.~#?&//=]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_+.~#?&//=]*)?/gi;
 
-	// Users
-	forUserRoster() {	//TODO - Rename to index
-		return getAccount("podium-user-roster")
-	}
-	forProfileOf(address) {
-		return RadixAccount.fromAddress(address)
-	}
-	forKeystoreOf(id, pw) {
-		return getAccount("podium-keystore-for-" + id + pw)
-	}
-	forProfileWithID(id) {	//TODO - Implement
-		return getAccount("podium-ownership-of-id-" + id)
-	}
-	forIntegrityOf(address) {
-		return getAccount("podium-integrity-score-of-" + address);
-	}
 
-	// Tokens
-	forPODof(address) {
-		return getAccount("podium-token-transactions-of-" + address);
-	}
-	forAUDof(address) {
-		return getAccount("audium-token-transactions-of-" + address);
-	}
 
-	// Topics
-	forTopicIndexOf(prefix) {
-		return getAccount("podium-topic-index-of-" + prefix.substring(0, 2))
-	}
-	forTopic(address) {
-		return RadixAccount.fromAddress(address)
-	}
-	forTopicWithID(id) {
-		return getAccount("podium-topic-" + id);
-	}
-	
-	// Posts
-	forPostsBy(address) {
-		return getAccount("podium-user-posts-" + address)
-	}
-	forPost(address) {
-		return RadixAccount.fromAddress(address)
-	}
-	forNextPostBy(user) {
-		// TODO - Fix this so posts are stored deterministicly again
-		return getAccount("podium-post-by-" + user.get("address") +
-			              "-" + (user.get("posts") + user.get("pending")));
-	}
-	forNewPost(post) {
-		return getAccount("podium-post-with-content-" + post);
-	}
-	
-	// Follows
-	forFollowing(address) {
-		return getAccount("podium-user-followers-" + address)
-	}
-	forFollowsBy(address) {
-		return getAccount("podium-user-following-" + address)
-	}
-	forRelationOf(address1, address2) {
-		return getAccount("podium-user-" + address1 +
-						  "-follows-user-" + address2)
-	}
-
-	// Alerts
-	forAlertsTo(address) {
-		return getAccount("podium-user-alerts-" + address)
-	}
-	
-}
-
-var Channel = new ChannelSet();
-export default Channel;
 
 
 
@@ -113,6 +27,7 @@ export function getCaretWithin(element) {
             caretOffset = preCaretRange.toString().length;
         }
     } else if ( (sel === doc.selection) && sel.type !== "Control") {
+    	console.log("can this ever actually happen?")
         var textRange = sel.createRange();
         var preCaretTextRange = doc.body.createTextRange();
         preCaretTextRange.moveToElementText(element);
@@ -123,12 +38,130 @@ export function getCaretWithin(element) {
 }
 
 
-export function markupPost(post) {
+export function markupPost(post, ignore=Set(), only=Set()) {
 
-	//TODO - Split mentions and topics on special characters
+	// Prevent case-sensitive match failures on ignore/only
+	ignore = ignore.map(r => r.toLowerCase())
+	only = only.map(r => r.toLowerCase())
 
 	// Init tracking variables
 	var depth = 0;
+
+	function markupWord(word, line) {
+
+		// Handle whitespace
+		if (word === "") {
+			depth += 1;
+			return [{
+				word: String.fromCharCode(32),
+				type: "word",
+				reference: false,
+				length: 1,
+				line: Math.floor((line + 1.0) / 2.0),
+				depth: depth,
+			}]
+		}
+
+		// Handle topics
+		if (word.charAt(0) === "#" && word.length > 3) {
+			const id = word.substring(1, word.length).split(/[^A-Z0-9_-]+/gi)[0]
+			if (!ignore.includes(word.toLowerCase) &&
+					(only.size === 0 || only.includes(word.toLowerCase()))) {
+				depth += id.length + 1
+				const suffix = word.substring(id.length + 1, word.length)
+				const out = [{
+					word: `#${id}`,
+					type: "topic",
+					reference: id,
+					length: id.length + 1,
+					line: Math.floor((line + 1.0) / 2.0),
+					depth: depth
+				}]
+				if (suffix.length > 0) {
+					return out.concat(markupWord(suffix, line))
+				} else {
+					return out
+				}
+			} else {
+				depth += word.length
+				return [{
+					word: word,
+					type: "word",
+					reference: false,
+					length: word.length,
+					line: Math.floor((line + 1.0) / 2.0),
+					depth: depth
+				}]
+			}
+		}
+
+		// Handle mentions
+		if (word.charAt(0) === "@" && word.length > 3) {
+			const id = word.substring(1, word.length).split(/[^A-Z0-9_-]+/gi)[0]
+			if (!ignore.includes(word.toLowerCase) &&
+					(only.size === 0 || only.includes(word.toLowerCase()))) {
+				depth += id.length + 1;
+				const suffix = word.substring(id.length + 1, word.length)
+				const out = [{
+					word: `@${id}`,
+					type: "mention",
+					reference: id,
+					length: id.length + 1,
+					line: Math.floor((line + 1.0) / 2.0),
+					depth: depth
+				}]
+				if (suffix.length > 0) {
+					return out.concat(markupWord(suffix, line))
+				} else {
+					return out
+				}
+			} else {
+				depth += word.length;
+				return [{
+					word: word,
+					type: "word",
+					reference: false,
+					length: word.length,
+					line: Math.floor((line + 1.0) / 2.0),
+					depth: depth
+				}]
+			}
+		}
+
+		// Handle links
+		if (word.match(urlRegex) &&
+				!ignore.includes(word.toLowerCase()) &&
+				(only.size === 0 || only.includes(word.toLowerCase()))) {
+			depth += word.length;
+			let url;
+			if (word.split("http").length > 1) {
+				url = word
+			} else {
+				url = `http://${word}`
+			}
+			return [{
+				word: word,
+				type: "link",
+				reference: url,
+				length: word.length,
+				line: Math.floor((line + 1.0) / 2.0),
+				depth: depth
+			}]
+		}
+
+		// Handle normal words
+		depth += word.length;
+		return [{
+			word: word,
+			type: "word",
+			reference: false,
+			length: word.length,
+			line: Math.floor((line + 1.0) / 2.0),
+			depth: depth
+		}]
+
+	}
+
 
 	// Break out post by lines
 	const lineListRaw = post.split("\r");
@@ -144,7 +177,8 @@ export function markupPost(post) {
 				result.push(next);
 			}
 			return result;
-		}, []);
+		}, [])
+
 
 	// Deconstruct each line
 	const result = lineList.map((line, l) => {
@@ -166,14 +200,13 @@ export function markupPost(post) {
 				reference: false,
 				length: 1,
 				line: Math.floor(l / 2.0),
-				depth: depth,
-				cost: Settings.costs.return
+				depth: depth
 			}];
 
 		} else {
 
 			// Break out line by sections
-			const sectionListRaw = line.split("\t");
+			const sectionListRaw = line.split("\t")
 			const sectionList = sectionListRaw.reduce(
 				(result, next, i) => {
 					if (i === sectionListRaw.length - 1) {
@@ -186,7 +219,7 @@ export function markupPost(post) {
 						result.push(next);
 					}
 					return result;
-				}, []);
+				}, [])
 
 			// Deconstruct sections
 			return sectionList.map((section, s) => {
@@ -202,8 +235,7 @@ export function markupPost(post) {
 						reference: false,
 						length: 1,
 						line: Math.floor((l + 1.0) / 2.0),
-						depth: depth,
-						cost: Settings.costs.tab
+						depth: depth
 					}];
 
 				} else {
@@ -225,99 +257,25 @@ export function markupPost(post) {
 						}, []);
 
 					// Handle trailing whitespace
-					return wordList.map((word, w) => {
-
-						//TODO - Handle punctuation separately from
-						// 		 the word itself (i.e.) to allow
-						//		 users to write #topic! without
-						//		 the ! counting towards the
-						//		 associated topic ID.
-
-						// Handle whitespace
-						if (word === "") {
-							depth += 1;
-							return {
-								word: String.fromCharCode(32),
-								type: "word",
-								reference: false,
-								length: 1,
-								line: Math.floor((l + 1.0) / 2.0),
-								depth: depth,
-								cost: Settings.costs.word
-							}
-						}
-
-						// Handle topics
-						if (word.charAt(0) === "#" && word.length > 3) {
-							depth += word.length;
-							return {
-								word: word,
-								type: "topic",
-								reference: word.substring(1, word.length),
-								length: word.length,
-								line: Math.floor((l + 1.0) / 2.0),
-								depth: depth,
-								cost: Settings.costs.topic
-							}
-						}
-
-						// Handle mentions
-						if (word.charAt(0) === "@" && word.length > 3) {
-							depth += word.length;
-							return {
-								word: word,
-								type: "mention",
-								reference: word.substring(1, word.length),
-								length: word.length,
-								line: Math.floor((l + 1.0) / 2.0),
-								depth: depth,
-								cost: Settings.costs.mention
-							}
-						}
-
-						// Handle links
-						const dots = word.split(".");
-						if (dots.length > 1 &&
-								dots[dots.length - 1] !== "" &&
-								word.length >= 5) {
-							depth += word.length;
-							return {
-								word: word,
-								type: "link",
-								reference: true,
-								length: word.length,
-								line: Math.floor((l + 1.0) / 2.0),
-								depth: depth,
-								cost: Settings.costs.link
-							}
-						}
-
-						// Handle normal words
-						depth += word.length;
-						return {
-							word: word,
-							type: "word",
-							reference: false,
-							length: word.length,
-							line: Math.floor((l + 1.0) / 2.0),
-							depth: depth,
-							cost: Settings.costs.word * word.length
-						}
-						
-					});
+					return wordList
+						.map(w => markupWord(w, l))
+						.reduce((a, b) => a.concat(b), [])
 
 				}
 
-			}).reduce((a, b) => a.concat(b), []);
+			}).reduce((a, b) => a.concat(b), [])
 
 		}
 
-	}).reduce((a, b) => a.concat(b), []).filter(x => x);
+	}).reduce((a, b) => a.concat(b), []).filter(x => x)
 
 	// Return result
 	return result
 
 }
+
+
+
 
 
 
@@ -395,7 +353,11 @@ export function timeform(t) {
 }
 
 
-
+export function commaNumber(num) {
+    var parts = num.toString().split(".")
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+    return parts.join(".")
+}
 
 export function formatNumber(num) {
 	if (num < 1000) {

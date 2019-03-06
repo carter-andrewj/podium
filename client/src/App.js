@@ -1,46 +1,57 @@
-import React, { Component } from 'react';
+import React from 'react';
+import ImmutableComponent from './components/immutableComponent';
 import { Route, Switch, Redirect } from "react-router-dom";
 
-import { fromJS, Map, List } from 'immutable';
+import { fromJS, Map, Set, List } from 'immutable';
 
 import { PodiumClient } from '@carter_andrewj/podix';
 
-import HUD from './core/HUD';
-import Loader from './core/loader';
 
-import LobbyHUD from './lobby/lobbyHUD';
-import Lobby from './lobby/lobby';
-import Register from './lobby/register';
+import HUD from './pages/HUD/HUD';
 
-import Feed from './core/pages/posting/feed';
-import PostPage from './core/pages/posting/postpage';
+import AlertsPage from './pages/alerts/alertsPage';
+import SearchPage from './pages/search/searchPage';
+import Wallet from './pages/wallet/wallet';
 
-import TopicFeed from './core/pages/topics/topicfeed';
-import TopicPage from './core/pages/topics/topicpage';
+import LobbyHUD from './pages/lobby/lobbyHUD';
+import Lobby from './pages/lobby/lobby';
 
-import Governance from './core/pages/governance/governance';
-import RulePage from './core/pages/governance/rulepage';
+import PostFeedPage from './pages/posts/postFeedPage';
+import Post from './pages/posts/post';
 
-import Settings from './core/pages/settings/settings';
+import Trending from './pages/trending/trending';
 
-import Profile from './core/pages/user/profile/profile';
-import Wallet from './core/pages/user/wallet/wallet';
-import Followers from './core/pages/user/followers/followers';
-import Following from './core/pages/user/following/following';
-import Integrity from './core/pages/user/integrity/integrity';
+import Governance from './pages/governance/governance';
+import RulePage from './pages/governance/rulePage';
 
-import AlertsPage from './core/alerts/alertspage';
-import SearchPage from './core/search/searchpage';
+import Profile from './pages/profiles/profile';
 
-import Error404 from './core/404';
+import Integrity from './pages/integrity/integrity';
+
+import Miner from './pages/miner/miner';
+
+import Settings from './pages/settings/settings';
+
+import About from './pages/about/about';
+
+import Loader from './components/loader';
+
+import Error404 from './pages/errors/404';
+
+import Config from 'config';
 
 
 
 let alerter;
+let holdTimer;
+let initializer;
+let exit;
+
 
 const emptyRecs = Map(fromJS({
 	posts: {},
 	users: {},
+	transactions: {},
 	topics: {},
 	alerts: {}
 }))
@@ -51,146 +62,82 @@ const emptySearch = Map(fromJS({
 	"pending": 0,
 	"target": "",
 	"results": {},
-	"error": null
+	"error": null,
+	"cleared": true
 }))
 
 
-// const emptyPost = Map(fromJS({
-
-// 	created: null,		// Timestamp of the post's creation
-// 	latest: null,		// Timestamp of the last update to this post
-
-// 	spentPOD: 0,		// POD spent to create the post
-// 	spentAUD: 0,		// AUD spent to create the post
-// 	content: "",		// Content of the post
-// 	ammended: null,		// History of ammendments to this post
-// 	retracted: null,	// The retraction notice on this post, if any
-
-// 	address: "",		// Address of this post in the ledger
-// 	author: "",			// Address of the user who authored this post in the ledger
-// 	promoters: [],		// Addresses of all users who promoted this post into the
-// 						//		active user's feed, if any
-
-// 	mentions: [],		// Addresses of any users mentioned in the post
-// 	topics: [],			// Addresses of any topics mentioned in the post
-// 	media: [],			// Addresses of any media featured in the post
-
-// 	replies: [],		// Addresses to immediate (i.e. 1 generation) replies to this post
-
-// 	reports: [],		// Address of reports for this post
-// 	sanctions: [],		// Addresses for any sanctions applied as a result of this post
-
-// 	promotions: 0,		// Count of total promotions of this post
-// 	promoPOD: 0,		// Total POD spent promoting this post
-// 	promoAUD: 0,		// Total AUD spent promoting this post
-	
-// 	parent: "",			// Address of the post replied to by this post, if any
-// 	grandparent: "",	// Address of the post replied to by this post's parent, if any
-// 						// 		used in thread curation to allow the thread builder to
-// 						//		look 2 posts back in time without loading additional data
-// 	origin: "",			// Address of the first post in this reply chain
-// 	depth: 0,			// Number of replies between this post and the origin post
-	
-// 	feed: false,		// Flag denoting if this post should be published to the feed
-// 	owned: false,		// This post was authored by the active user
-// 	followed: false,	// This post was authored by someone the active user follows
-// 	following: false,	// This post was authored by someone following the active user
-	
-// 	processed: null,	// The ID of the updated that last processed this post (to
-// 						// 		avoid multiple sub-threads with the same origin being
-// 						//		published ad-nauseum, each feed process will process
-// 						//		every thread, but may not publish every post. This allows
-// 						//		for such skipped posts to be published as new posts
-// 						//		in a later feed refresh.)
-// 	published: null,	// The ID of the update that last surfaced this post in the feed
-// 	updated: true,		// Flags whether the post has updated since its last appearance
-// 						// 		in the feed
-	
-// 	pending: false,		// Flag for the active user's posts to indicate whether the
-// 						// 		record has been stored on the ledger or has been placed
-// 						//		in state via optimistic update
-// 	failed: false		// As above, flag for denoting if the optimistically-updated
-// 						// 		post failed to write to the ledger
-
-// }))
+const emptyFeed = Map({
+	feed: List(),
+	published: Set(),
+	pending: Map(),
+	markers: List()
+})
 
 
-const emptyFeed = Map(fromJS({
-	threads: [],
-	published: 0,
-	next: 0,
-	pending: 0
-}))
 
 
-class App extends Component {
+
+class App extends ImmutableComponent {
 
 	constructor() {
-		super()
+		super({
 
-		this.state = {
-			data: Map(fromJS({
+			demomenu: false,
+			demoLoading: false,
+			demoCount: 0,
 
-				demomenu: false,
+			podium: null,
 
-				podium: null,
-				initializing: false,
+			activeUser: null,
+			balance: null,
 
-				activeUser: null,
+			records: emptyRecs,
 
-				records: emptyRecs,
+			feed: emptyFeed,
 
-				feed: emptyFeed,
+			search: emptySearch,
 
-				search: emptySearch,
+			alerts: {},
 
-				alerts: {}
+			exit: false,
+			exitAll: false
 
-			}))
-		}
+		})
 
 		this.search = this.search.bind(this)
 		this.resetSearch = this.resetSearch.bind(this)
 
-		this.signIn = this.signIn.bind(this)
-		this.signOut = this.signOut.bind(this)
 		this.registerUser = this.registerUser.bind(this)
+		this.signIn = this.signIn.bind(this)
+		this.initSession = this.initSession.bind(this)
+		this.signOut = this.signOut.bind(this)
 
 		this.getAlerts = this.getAlerts.bind(this)
+		this.clearAlerts = this.clearAlerts.bind(this)
+		this.clearAllAlerts = this.clearAllAlerts.bind(this)
 
 		this.receiveAlert = this.receiveAlert.bind(this)
 		this.receiveFollow = this.receiveFollow.bind(this)
+		this.receiveTransaction = this.receiveTransaction.bind(this)
 
 		this.getUser = this.getUser.bind(this)
 		this.loadUser = this.loadUser.bind(this)
 		this.saveUser = this.saveUser.bind(this)
 
+		this.followUser = this.followUser.bind(this)
+		this.buildFollow = this.buildFollow.bind(this)
+		this.unfollowUser = this.unfollowUser.bind(this)
+
 		this.sendPost = this.sendPost.bind(this)
 		this.getPost = this.getPost.bind(this)
 		this.loadPost = this.loadPost.bind(this)
 		this.savePost = this.savePost.bind(this)
+		this.buildPost = this.buildPost.bind(this)
 		this.publishPosts = this.publishPosts.bind(this)
 
-	}
+		this.transition = this.transition.bind(this)
 
-
-
-// STATE MANAGEMENT
-
-	updateState(up, callback) {
-		this.setState(
-			({data}) => { return { data: up(data)} },
-			callback
-		);
-	}
-
-	getState() {
-		const args = Array.prototype.slice.call(arguments)
-		if (args.length === 1) {
-			return this.state.data.get(args[0])
-		} else {
-			return this.state.data.getIn([...args])
-		}
 	}
 
 
@@ -198,7 +145,7 @@ class App extends Component {
 
 // INTITIAL SETUP
 
-	componentWillMount() {
+	immutableComponentWillMount() {
 
 		// Get local config in dev mode
 		new PodiumClient()
@@ -237,16 +184,16 @@ class App extends Component {
 			
 				//TODO - Sanitize search string
 
-				console.log("new search", target, this.getState("search", "pending"))
-
 				// Log search target
 				this.updateState(state => state
 					.setIn(["search", "loading"], true)
 					.setIn(["search", "target"], target)
 					.setIn(["search", "error"], null)
+					.setIn(["search", "cleared"], false)
 					.updateIn(["search", "pending"], p => p + 1)
 					.updateIn(["search", "results"], results => results
-						.filter(r => r.get("id").includes(target))
+						.filter(r => r.get("searchid")
+							.includes(target.toLowerCase()))
 					)
 				)
 
@@ -261,29 +208,37 @@ class App extends Component {
 					.search(target)
 					.then(results => {
 
-						// Exclude results if the search
-						// string has changed before return
-						const currentTarget = this.getState("search", "target")
-						var userList = results
-							.filter(r => r.get("id").includes(currentTarget))
-							.toList()
+						// Discard results if search was cancelled
+						if (this.getState("search", "cleared")) {
+							resolve()
+						} else {
 
-						// Update state with new results
-						this.updateState(state => state
-							.setIn(["search", "results"], userList)
-							.updateIn(["search", "pending"],
-								(p) => Math.max(0, p - 1))
-							.setIn(["search", "loading"],
-								state.getIn(["search", "pending"]) > 1 &&
-								state.getIn(["search", "target"]) !== ""),
-							() => {
-								console.log("finished search", target, this.getState("search", "pending"))
-								resolve()
-							}
-						)
+							// Exclude results if the search
+							// string has changed before return
+							const currentTarget = this.getState("search", "target")
+							var userList = results
+								.filter(r => 
+									r.get("searchid")
+										.includes(currentTarget.toLowerCase())
+									&& r.get("id") !== this.getState("activeUser").id
+								)
+								.toList()
+
+							// Update state with new results
+							this.updateState(state => state
+								.setIn(["search", "results"], userList)
+								.updateIn(["search", "pending"],
+									(p) => Math.max(0, p - 1))
+								.setIn(["search", "loading"],
+									state.getIn(["search", "pending"]) > 1 &&
+									state.getIn(["search", "target"]) !== ""),
+								resolve
+							)
+
+						}
 
 					})
-					.catch(error => console.error(error))
+					.catch(console.error)
 
 			}
 		})
@@ -332,64 +287,70 @@ class App extends Component {
 
 
 	initSession(user) {
+		this.updateState(
 
-		// Store active user
-		this.updateState(state => state
-			.set("initializing", true)
-			.set("activeUser", user)
-			.setIn(["records", "users", user.address], user)
-		)
+			// Store active user
+			state => state
+				.set("activeUser", user)
+				.set("initializing", true)
+				.setIn(["records", "users", user.address], user),
 
-		// Load profile data
-		user.profile(true)
-			.catch(error => console.error(error))
+			// Set up session
+			() => {
 
-		// Load users following the active user
-		user.followerIndex(true)
-			.catch(error => console.error(error))
+				// Load profile data
+				user.profile(true).catch(console.error)
 
-		// Load users followed by the active user
-		user.followingIndex(true)
-			.then(followed => {
-				followed.map(this.receiveFollow)
-				user.onFollow(this.receiveFollow)
-			})
-			.catch(console.error)
+				// Load transactions
+				user.transactionIndex(true).catch(console.error)
+				user.onTransaction(this.receiveTransaction)
 
-		// Load user's posts and alerts
-		user.postIndex(true)
-			.then(posts => Promise.all(posts.map(this.getPost)))
-			.then(() => user.onPost(p =>
-				this.getPost(p)
+				// Load users following the active user
+				user.followerIndex(true).catch(console.error)
+
+				// Load users followed by the active user
+				// and their posts
+				user.followingIndex(true)
+					.then(following => Promise.all([
+						this.receiveFollow(user.address),
+						...following.map(this.receiveFollow)
+					]))
+					.then(() => {
+						user.onPost(this.buildPost)
+						user.onFollow(this.receiveFollow)
+						this.updateState(state => state
+							.set("initializing", false),
+							() => this.publishPosts(true)
+						)
+					})
 					.catch(console.error)
-			))
-			.catch(console.error)
 
-		// Check for alerts
-		this.getAlerts(true)
-		alerter = setInterval(this.getAlerts, 5000)
+				// Check for alerts
+				this.getAlerts(true)
+				alerter = setInterval(this.getAlerts, 15000)
 
-		// Give the loader some time to pre-load posts before publishing feed
-		var counter = 0;
-		let watcher = setInterval(() => {
-			if (this.getState("feed", "pending") > 10 || counter >= 100) {
-				clearInterval(watcher)
-				this.updateState(state => state.set("initializing", false))
-				this.publishPosts()
-			} else {
-				counter += 1
 			}
-		}, 100)
+
+		)
 
 	}
 
 
 	signOut() {
 		clearInterval(alerter)
-		this.updateState(state => state
-			.set("activeUser", null)
-			.set("records", emptyRecs)
-		);
+		clearInterval(holdTimer)
+		clearTimeout(initializer)
+		this.transition(
+			() => this.updateState(state => state
+				.set("activeUser", null)
+				.set("initializing", false)
+				.set("records", emptyRecs)
+				.set("search", emptySearch)
+				.set("feed", emptyFeed)
+				.set("alerts", Map())
+			),
+			true
+		)
 	}
 
 
@@ -398,21 +359,51 @@ class App extends Component {
 
 // ALERTS
 
-	getAlerts(seen=false) {
+	getAlerts(seen = false) {
 		this.getState("activeUser")
 			.alerts(seen)
 			.then(alerts => {
 				const newAlerts = alerts
-					.filter(a => !this.getState("alerts", a.get("id")))
-					.reduce(
-						(n, a) => n.set("id", a.set("surfaced", false)),
-						Map({})
-					)
+					.filter(a => !this.getState("alerts", a.get("key")))
+					.reduce((r, a) => r.set(a.get("key"), a), Map())
 				this.updateState(state => state
-					.update("alerts", a => a.merge(newAlerts))
+					.update("alerts", current => current.mergeDeep(newAlerts))
 				)
 			})
-			.catch(error => console.error(error))
+			.catch(console.error)
+	}
+
+
+	clearAlerts(keys) {
+		return new Promise((resolve, reject) => {
+			this.getState("activeUser")
+				.clearAlerts(keys)
+				.then(() => this.updateState(
+					state => state.update("alerts",
+						alerts => alerts.map(a => {
+							if (keys.includes(a.get("key"))) {
+								return a.set("seen", true)
+							} else {
+								return a
+							}
+						})
+					),
+					resolve
+				))
+				.catch(reject)
+		})
+	}
+
+
+	clearAllAlerts() {
+		return new Promise((resolve, reject) => {
+			const alertKeys = this.getState("alerts")
+				.map(a => a.get("key"))
+				.toList()
+			this.clearAlerts(alertKeys)
+				.then(resolve)
+				.catch(reject)
+		})
 	}
 
 
@@ -422,8 +413,6 @@ class App extends Component {
 // HANDLE NEW DATA
 
 	receiveAlert(alert) {
-
-		// Add alert record to state
 		this.updateState(state => state
 			.updateIn(["records", "alerts"],
 				alerts => alerts
@@ -431,24 +420,36 @@ class App extends Component {
 					.sortBy(a => a.get("created"))
 			)
 		)
-
 	}
 
 
 	receiveFollow(address) {
+		return new Promise((resolve, reject) => {
+			this.getUser(address)
+				.then(this.buildFollow)
+				.then(user => {
+					user.onPost(this.buildPost)
+					resolve()
+				})
+				.catch(reject)
+		})
+	}
 
-		// Confirm user is followed
-		this.getState("activeUser")
-			.isFollowing(address)
-			.then(following => {
-				if (following) {
-					this.getUser(address)
-						.then(user => user.onPost(this.getPost))
-						.catch(error => console.error(error))
-				}
-			})
-			.catch(error => console.error(error))
 
+	receiveTransaction(record) {
+		const key = record.get("type") + record.get("created")
+		this.updateState(state => {
+			const transactions = state
+				.getIn(["records", "transactions"])
+				.set(key, record)
+			var balance = transactions.reduce(
+				(total, next) => total + next.get("value"),
+				0
+			)
+			return state
+				.setIn(["records", "transactions"], transactions)
+				.set("balance", balance)
+		})
 	}
 
 
@@ -456,27 +457,28 @@ class App extends Component {
 
 // USERS
 
-	getUser(address, preload=true) {
+	getUser(address, preload = true) {
 		return new Promise((resolve, reject) => {
 			let currentUser = this.getState("records", "users", address)
 			if (currentUser) {
 				if (preload) {
-					this.loadUser(currentUser)
+					this.loadUser(currentUser, true)
 						.then(resolve)
 						.catch(reject)
 				} else {
-					currentUser.withProfile()
+					currentUser
+						.withProfile(true)
 						.then(resolve)
 						.catch(reject)
 				}
 			} else {
 				var user = this.getState("podium").user(address)
 				if (preload) {
-					this.loadUser(user)
+					this.loadUser(user, true)
 						.then(resolve)
 						.catch(reject)
 				} else {
-					user.withProfile()
+					user.withProfile(true)
 						.then(this.saveUser)
 						.then(resolve)
 						.catch(reject)
@@ -488,8 +490,18 @@ class App extends Component {
 
 	loadUser(user, force = false) {
 		return new Promise((resolve, reject) => {
-			user.load(force)
-				.then(this.saveUser)
+			user.withProfile(force)
+				.then(loadedUser => {
+
+					// Pre-emptively load rest of post data in parallel
+					loadedUser.load(force)
+						.then(this.saveUser)
+						.catch(console.error)
+
+					// Build post if its content has changed
+					return this.saveUser(loadedUser)
+
+				})
 				.then(resolve)
 				.catch(reject)
 		})
@@ -498,10 +510,40 @@ class App extends Component {
 
 	saveUser(user) {
 		return new Promise((resolve, reject) => {
-			this.updateState(state => state
-				.setIn(["records", "users", user.address], user),
+			this.updateState(
+				state => state.updateIn(
+					["records", "users", user.address],
+					u => {
+						if (u) {
+							u.cache.mergeAll(user.cache)
+							return u
+						} else {
+							return user
+						}
+					}
+				),
 				() => resolve(user)
 			)
+		})
+	}
+
+
+	buildFollow(user) {
+		return new Promise((resolve, reject) => {
+			user.postIndex(true)
+				.then(posts => {
+					if (posts.size > 0) {
+						this.updateState(state => state.updateIn(
+							["feed", "published"],
+							p => p.union(posts.rest().toSet())
+						))
+						return this.buildPost(posts.first())
+					} else {
+						return
+					}
+				})
+				.then(() => resolve(user))
+				.catch(reject)
 		})
 	}
 
@@ -510,7 +552,7 @@ class App extends Component {
 
 // POSTING
 
-	async sendPost(content, parent) {
+	async sendPost(content, references, parent) {
 
 		// Packages and stores a new post. Each post is stored
 		// in one location, created from the posting user's
@@ -529,7 +571,7 @@ class App extends Component {
 
 		return new Promise((resolve, reject) => {
 			this.getState("activeUser")
-				.createPost(content, Map(), parent.address)
+				.createPost(content, references, parent)
 				.then(post => {
 					this.loadPost(post)
 					resolve(post)
@@ -551,11 +593,11 @@ class App extends Component {
 			let currentPost = this.getState("records", "posts", address)
 			if (currentPost) {
 				if (preload) {
-					this.loadPost(currentPost)
+					this.loadPost(currentPost, true)
 						.then(resolve)
 						.catch(reject)
 				} else {
-					currentPost.withContent()
+					currentPost.withContent(true)
 						.then(this.savePost)
 						.then(resolve)
 						.catch(reject)
@@ -563,11 +605,11 @@ class App extends Component {
 			} else {
 				var post = this.getState("podium").post(address)
 				if (preload) {
-					this.loadPost(post)
+					this.loadPost(post, true)
 						.then(resolve)
 						.catch(reject)
 				} else {
-					post.withContent()
+					post.withContent(true)
 						.then(this.savePost)
 						.then(resolve)
 						.catch(reject)
@@ -579,10 +621,17 @@ class App extends Component {
 
 	loadPost(post, force = false) {
 		return new Promise((resolve, reject) => {
-			post.load(force)
+			post.withContent(force)
 				.then(loadedPost => {
-					// Build post
+
+					// Pre-emptively load rest of post data in parallel
+					loadedPost.load(force)
+						.then(this.savePost)
+						.catch(console.error)
+
+					// Save loaded post
 					return this.savePost(loadedPost)
+
 				})
 				.then(resolve)
 				.catch(reject)
@@ -590,235 +639,215 @@ class App extends Component {
 	}
 
 
+	checkHold() {
+		return new Promise((resolve, reject) => {
+			var holder = this.getState("feed", "holder")
+			if (!holder) {
+				holder = new Promise((resolveHold) => {
+					holdTimer = setInterval(
+						() => {
+							if (!this.getState("feed", "hold")) {
+								clearInterval(holdTimer)
+								this.updateState(
+									state => state.setIn(["feed", "holder"], null),
+									resolveHold
+								)
+							}
+						},
+						100
+					)
+				})
+				this.updateState(state => state.setIn(["feed", "holder"], holder))
+			}
+			holder.then(resolve).catch(reject)
+		})
+	}
+
+
+	buildPost(address) {
+		return new Promise(async (resolve, reject) => {
+
+			// Wait until any current publish actions
+			// have completed
+			await this.checkHold()
+
+			// Retrieve post
+			this.getPost(address)
+				.then(post => {
+
+					// Check post does not already exist in feed
+					if (!this.getState("feed", "published").has(post.address)) {
+
+						// Flag post as feed post
+						post.feed = true
+
+						// Pre-emptively load parent post in parallel
+						if (post.parentAddress) {
+							this.getPost(post.parentAddress).catch(console.error)
+						}
+
+						// Pre-emptively load grandparent post in parallel
+						if (post.grandparentAddress) {
+							this.getPost(post.grandparentAddress).catch(console.error)
+						}
+
+						// Pre-emptively load origin post, if different
+						if (post.originAddress !== post.grandparentAddress &&
+								post.originAddress !== post.parentAddress &&
+								post.originAddress !== post.address) {
+							this.getPost(post.originAddress).catch(console.error)
+						}
+
+						// Pre-emptively load author
+						this.getUser(post.authorAddress).catch(console.error)
+
+						// Add post to feed
+						this.updateState(state => state.updateIn(
+							["feed", "pending"],
+							nextFeed => {
+
+								// Check if this origin already exists and
+								// if that thread is more recent than this post
+								const thread = nextFeed.get(post.originAddress)
+								if (!thread || (post.created > thread.get("created"))) {
+
+									// Update next feed with new post
+									return nextFeed.set(
+										post.originAddress,
+										Map({
+											target: post.address,
+											parent: post.parentAddress,
+											grandparent: post.grandparentAddress,
+											origin: post.originAddress,
+											created: post.created,
+											published: new Date().getTime()
+										})
+									)
+
+								} else {
+
+									// Otherwise, ignore the current post
+									return nextFeed
+
+								}
+
+							}
+						))
+
+						// Save and return post
+						this.savePost(post)
+							.then(resolve)
+							.catch(reject)
+
+					} else {
+						resolve(post)
+					}
+
+				})
+				.catch(reject)
+
+		})
+
+	}
+
+
 	savePost(post) {
 		return new Promise((resolve, reject) => {
-			this.updateState(state => state
-				.setIn(["records", "posts", post.address], post),
+			this.updateState(
+				state => state.updateIn(
+					["records", "posts", post.address],
+					p => {
+						if (p) {
+
+							// Merge post caches
+							p.cache.mergeAll(post.cache)
+
+							// Set post flags
+							p.updated = true 
+
+							// Return post
+							return p
+
+						} else {
+							return post
+						}
+					}
+				),
 				() => resolve(post)
 			)
 		})
 	}
 
 
-	// buildPost(newPost, store) {
-	// 	return new Promise((resolve, reject) => {
+	publishPosts(auto = false) {
+		if (this.getState("feed", "pending").size > 0) {
 
-	// 		console.log("Building Post:", newPost.get("content"))
+			// Pause adding new posts to the pending set
+			this.updateState(
+				state => state.setIn(["feed", "hold"], true),
 
-	// 		// Unpack post
-	// 		const address = newPost.get("address")
-	// 		const author = newPost.get("author")
+				() => this.updateState(state => {
 
-	// 		// Check and update current posts
-	// 		let post;
-	// 		const oldPost = this.getState("records", "post", address)
+					// Unpack data
+					const pending = state.getIn(["feed", "pending"])
+						.valueSeq()
+						.sort((a, b) => a.get("created") < b.get("created") ? 1 : -1)
+						.toList()
+					const newPosts = pending
+						.map(p => List([
+							p.get("target"), p.get("parent"),
+							p.get("grandParent"), p.get("origin")
+						]))
+						.flatten()
+						.filter(a => a)
+						.toSet()
+					const next = state.getIn(["feed", "feed"]).size
 
-	// 		// Check if post is an update on any existing post
-	// 		if (!oldPost || oldPost.get("latest") !== newPost.get("latest")) {
+					// Update feed data
+					return state
 
-	// 			// Resolve post discrepancies
-	// 			if (oldPost) {
-	// 				post = oldPost
-	// 					.mergeDeep(newPost)
-	// 					.set("updated", true)
-	// 			} else {
-	// 				post = emptyPost.mergeDeep(newPost);
-	// 			}
-
-	// 			// Set flags for this post
-	// 			if (author === this.getState("user").address) {
-	// 				post = post
-	// 					.set("owned", true)
-	// 					.set("feed", true)
-	// 			}
-	// 			if (author in this.getState("userData", "following")) {
-	// 				post = post
-	// 					.set("following", true)
-	// 					.set("feed", true)
-	// 			}
-	// 			post.set("follower",
-	// 				(author in this.getState("user", "followers")))
-	// 			//TODO - Other classifications (reactions, reports, etc...)
-
-	// 			// Load post's author
-	// 			// - We don't store the author in the call to getProfile to ensure
-	// 			//   a fully atomic, single update with both post and author
-	// 			let profile = this.getProfile(author, false, false)
-
-	// 			// Pre-emptively load preceeding and origin posts for replies
-	// 			let parent;
-	// 			let origin;
-	// 			if (post.get("depth") > 0 && post.get("forFeed")) {
-	// 				parent = this.getPost(post.get("parent"))
-	// 				if (post.get("depth") !== 1) {
-	// 					origin = this.getPost(post.get("origin"))
-	// 				}
-	// 			}
-
-	// 			//TODO - Pre-emptively load mentions and topics
-
-	// 			// Wait for all dependencies to resolve
-	// 			Promise
-	// 				.all([parent, origin, profile])
-	// 				.then(([parentPost, originPost, profile]) => {
-	// 					if (store) {
-
-	// 						// Store post in state, if required
-	// 						this.updateState(state => state
-	// 							.updateIn(["feed", "pending"],
-	// 								p => post.get("feed") ? p + 1 : p)
-	// 							.setIn(["records", "posts", address], post)
-	// 							.setIn(["records", "users", author], profile),
-	// 							() => resolve(post)
-	// 						)
-
-	// 					} else {
-
-	// 						// Otherwise, store supporting data
-	// 						// in the post itself and return
-	// 						post = post.set("author", profile)
-	// 						if (parentPost) {
-	// 							post.set("parent", parentPost)
-	// 						}
-	// 						if (originPost) {
-	// 							post.set("origin", originPost)
-	// 						}
-	// 						resolve(post)
-
-	// 					}
-	// 				})
-	// 				.catch(error => reject(error))
-
-	// 		}
-
-	// 	})
-
-	// }
-
-
-	async publishPosts() {
-
-		// Get next feed id
-		const nextFeed = this.getState("feed", "next")
-
-		// Get post records
-		const allPosts = this.getState("records", "posts")
-
-
-		// Get posts for publishin
-		const processGroup = allPosts
-
-			// Strip post keys
-			.valueSeq()
-
-			// Select all "in-feed" posts (i.e. those from the
-			// active user, users they follow, or via promotions)
-			// that are either not in the current feed, or not
-			// up-to-date in that feed
-			.filter(post => post.feed && post.updated)
-
-
-		// Curate threads
-		const publishGroup = processGroup
-
-			// Sort posts by the most recently updated
-			.sort((a, b) => (a.latest > b.latest) ? 1 : -1)
-
-			// Group these posts into threads by origin
-			.groupBy(post => post.originAddress)
-
-			// Process each potential thread
-			.map(posts => posts
-
-				// Filter out posts that are either not in the same
-				// subthread as the most recent post, or which are
-				// more than 2 generations removed from the last
-				// "in-feed" post
-				.filter((post, i) => {
-					if (i === 0) {
-						return true
-					} else if (i === 1) {
-						return post.address === posts.get(i - 1).parentAddress
-					} else {
-						return post.address === posts.get(i - 2).grandparent
-					}
-				})
-
-				// Reduce each thread down to a list of
-				// addresses for each post therein
-				.reduce((thread, post, i) => {
-
-					// Always select latest post
-					if (i === 0) {
-						return thread.push(post.address)
-
-					// Return consecutive posts unaltered
-					} else if (posts[i - 1].parent === post.address) {
-						return thread.push(post.address)
-
-					// Return placeholders for missing posts
-					} else {
-						return thread
-							.push(post.parentAddress)
-							.push(post.address)
-					}
-
-				}, List())
-
-			)
-
-			// Add the origin post to each thread, if required.
-			// Where a gap exists between the last post and the
-			// thread origin, return an integer representing
-			// the number of missing posts.
-			.map(thread => {
-				const last = allPosts.get(thread.last())
-				const origin = last.originAddress;
-				const depth = last.depth;
-				if (origin !== last.address) {
-					if (depth > 1) {
-						return thread.push(depth - 1).push(origin)
-					} else {
-						return thread.push(origin)
-					}
-				} else {
-					return thread
-				}
-			})
-
-			// Reverse each thread, so the origin appears first
-			.map(thread => thread.reverse())
-			.toList()
-
-
-		// Check if there are posts to publish
-		if (publishGroup.size > 0) {
-			this.updateState(state => state
-
-				// Store feed
-				.setIn(["feed", "pending"], 0)
-				.updateIn(["feed", "next"], f => f + 1)
-				.updateIn(["feed", "published"], p => p + publishGroup.size)
-				.updateIn(["feed", "threads"], t => t.concat(publishGroup))
-
-				// Log which posts have been published
-				.updateIn(["records", "posts"], posts => {
-					processGroup.forEach(post => {
-						posts = posts.setIn(
-							[post.address, "processed"],
-							nextFeed
+						// Add new post list to published set
+						.updateIn(["feed", "feed"],
+							f => f.unshift(List(
+								[ pending ]
+							))
 						)
-					})
-					publishGroup.flatten().forEach(address => {
-						posts = posts
-							.setIn([address, "published"], nextFeed)
-							.setIn([address, "updated"], false)
-					})
-					return posts
+
+						// Log action that triggered publication
+						.updateIn(["feed", "markers"],
+							m => m.unshift(List(
+								[ fromJS([{
+									marker: true,
+									show: !auto,
+									type: "update",
+									value: pending.size
+								}]) ]
+							))
+						)
+
+						// Store which posts have been published
+						.updateIn(["feed", "published"],
+							p => p.union(newPosts)
+						)
+
+						// Update post records
+						.updateIn(["records", "posts"],
+							posts => posts.map(p => {
+								if (newPosts.includes(p.address)) {
+									p.published = next
+									p.updated = false
+								}
+								return p
+							})
+						)
+
+						// Reset pending
+						.setIn(["feed", "pending"], Map())
+						.setIn(["feed", "hold"], false)
+
 				})
 			)
 		}
-
 	}
 
 
@@ -841,12 +870,105 @@ class App extends Component {
 
 
 
+// FOLLOWING
+
+	followUser(address) {
+		return new Promise((resolve, reject) => {
+			this.getState("activeUser")
+				.follow(address)
+				.then(user => {
+					this.saveUser(user)
+					this.getUser(address, true)
+					resolve()
+				})
+				.catch(reject)
+		})
+	}
+
+	unfollowUser(address) {
+		return new Promise((resolve, reject) => {
+			this.getState("activeUser")
+				.unfollow(address)
+				.then(user => {
+					this.saveUser(user)
+					this.getUser(address, true)
+					resolve()
+				})
+				.catch(reject)
+		})
+	}
+
+
+
+
+// TRANSITIONS
+
+	transition(callback, all = false, hud = false) {
+		clearTimeout(exit)
+		this.updateState(
+			state => state
+				.set("exit", all || !hud)
+				.set("exitAll", all || hud),
+			() => {
+				exit = setTimeout(
+					() => this.updateState(
+						state => state
+							.set("exit", false)
+							.set("exitAll", false),
+						callback
+					),
+					Config.timings.transition * 2.0 * 1000
+				)
+			}
+		)
+	}
+
+
+
+
+
 // DEMO OPTIONS
 
 	toggleDemoMenu() {
 		this.updateState(state => state
 			.update("demomenu", (x) => !x)
-		);
+		)
+	}
+
+
+	requestFunds(value) {
+		this.updateState(
+			state => state
+				.set("demoLoading", true)
+				.update("demoCount", d => d + 1),
+			() => this.getState("activeUser")
+				.requestFunds(value)
+				.then(() => this.updateState(state => state
+					.update("demoCount", d => d - 1)
+					.set("demoLoading", state.get("demoCount") > 1)
+				))
+				.catch(console.error)
+		)
+	}
+
+
+	divestFunds(value) {
+		if (this.getState("balance") && value <= this.getState("balance")) {
+			this.updateState(
+				state => state
+					.set("demoLoading", true)
+					.update("demoCount", d => d + 1),
+				() => this.getState("activeUser")
+					.createTransaction(this.getState("podium").rootAddress, value)
+					.then(() => {
+						this.updateState(state => state
+							.update("demoCount", d => d - 1)
+							.set("demoLoading", state.get("demoCount") > 1)
+						)
+					})
+					.catch(console.error)
+			)
+		}
 	}
 
 
@@ -856,6 +978,7 @@ class App extends Component {
 
 	render() {
 
+		const balance = this.getState("balance")
 		const demoMenu = <div
 			className={(this.getState("demomenu")) ? 
 				"card demo-menu demo-menu-open" :
@@ -863,22 +986,48 @@ class App extends Component {
 			<p className="demo-menu-title">
 				Demo Menu
 			</p>
-			<p className="demo-menu-option"
+
+			<div
+				className="demo-menu-item demo-menu-option"
+				onClick={() => console.log("about")}>
+				<i className="fas fa-info-circle demo-menu-icon" />
+				About Podium
+			</div>
+
+			<div className="demo-menu-item">
+				<p className="demo-menu-text">
+					POD Tokens
+				</p>
+				{balance ?
+					<div>
+						<div
+							className="demo-menu-button"
+							onClick={() => this.divestFunds(100)}>
+							-100
+						</div>
+						<div
+							className="demo-menu-button"
+							onClick={() => this.requestFunds(100)}>
+							+100
+						</div>
+					</div>
+					:
+					<div className="demo-menu-button demo-menu-pending">
+						<i className="fa fas-circle-notch demo-menu-loader" />
+					</div>
+				}
+			</div>
+
+			<div
+				className="demo-menu-item demo-menu-option"
 				onClick={()=> window.location.href =
 					"mailto:andrew@podium-network.com" +
 						"?subject=Re:%20Podium%20Demo%20-%20Feedback"
 				}>
-				<span className="fas fa-envelope demo-menu-icon"></span>
-				Send Feedback
-			</p>
-			<p className="demo-menu-option"
-				onClick={() => window.open(
-					"https://www.podium-network.com",
-					"_blank"
-				)}>
-				<span className="fas fa-sign-out-alt demo-menu-icon"></span>
-				Podium Homepage
-			</p>
+				<i className="fas fa-envelope demo-menu-icon" />
+				Contact Us
+			</div>
+
 		</div>
 
 
@@ -887,19 +1036,25 @@ class App extends Component {
 		const FeedRoute = <Route
 			exact
 			path="/"
-			render={props => <Feed {...props}
+			render={props => <PostFeedPage {...props}
 
 				podium={this.getState("podium")}
 				activeUser={this.getState("activeUser")}
+				balance={this.getState("balance")}
+
 				getUser={this.getUser}
 
-				initializing={this.getState("initializing")}
 				feedData={this.getState("feed")}
 
-				posts={this.getState("records", "posts")}
 				getPost={this.getPost}
 				sendPost={this.sendPost}
 				publishPosts={this.publishPosts}
+
+				followUser={this.followUser}
+				unfollowUser={this.unfollowUser}
+
+				transition={this.transition}
+				exit={this.getState("exit")}
 
 			/>}
 		/>
@@ -907,13 +1062,26 @@ class App extends Component {
 		// Route to a post with a given >address<
 		const PostRoute = <Route
 			path="/post/:address"
-			render={props => <PostPage {...props}
+			render={props => <Post {...props}
 
+				podium={this.getState("podium")}
 				activeUser={this.getState("activeUser")}
+				balance={this.getState("balance")}
 
-				postAddress={props.match.params.address}
+				post={props.match.params.address}
+				from="address"
+				format="page"
+
+				getUser={this.getUser}
 
 				getPost={this.getPost}
+				sendPost={this.sendPost}
+
+				followUser={this.followUser}
+				unfollowUser={this.unfollowUser}
+
+				transition={this.transition}
+				exit={this.getState("exit")}
 
 			/>}
 		/>
@@ -924,9 +1092,11 @@ class App extends Component {
 		const ProfileRoute = <Route
 			path="/user/:id"
 			render={props => <Profile {...props}
+				key={`profile-${props.match.params.id}`}
 
 				podium={this.getState("podium")}
 				activeUser={this.getState("activeUser")}
+				balance={this.getState("balance")}
 
 				from="id"
 				target={props.match.params.id}
@@ -934,42 +1104,17 @@ class App extends Component {
 				getPost={this.getPost}
 				getUser={this.getUser}
 
+				followUser={this.followUser}
+				unfollowUser={this.unfollowUser}
+
 				format="page"
 
-			/>}
-		/>
-
-		// Route to the wallet page of the active user
-		const WalletRoute = <Route
-			path="/wallet"
-			render={props => <Wallet {...props}
+				transition={this.transition}
+				exit={this.getState("exit")}
 
 			/>}
 		/>
 
-		// Route to the followers page of the active user
-		const FollowersRoute = <Route
-			path="/followers"
-			render={props => <Followers {...props}
-				
-				activeUser={this.getState("activeUser")}
-
-				users={this.getState("records", "users")}
-
-			/>}
-		/>
-
-		// Route to the following page of the active user
-		const FollowingRoute = <Route
-			path="/following"
-			render={props => <Following {...props}
-
-				activeUser={this.getState("activeUser")}
-
-				users={this.getState("records", "users")}
-
-			/>}
-		/>
 
 		// Route to the integrity page of the active user
 		const IntegrityRoute = <Route
@@ -978,8 +1123,26 @@ class App extends Component {
 
 				activeUser={this.getState("activeUser")}
 
+				transition={this.transition}
+				exit={this.getState("exit")}
+
 			/>}
 		/>
+
+
+		// Route to the integrity page of the active user
+		const MinerRoute = <Route
+			path="/miner"
+			render={props => <Miner {...props}
+
+				activeUser={this.getState("activeUser")}
+
+				transition={this.transition}
+				exit={this.getState("exit")}
+
+			/>}
+		/>
+
 
 		// Route to the Alerts page of the active user
 		const AlertsRoute = <Route
@@ -988,30 +1151,29 @@ class App extends Component {
 
 				activeUser={this.getState("activeUser")}
 
-			/>}
-		/>
+				alerts={this.getState("alerts")}
+				clearAllAlerts={this.clearAllAlerts}
 
+				getUser={this.getUser}
 
-		// Route to the topic curation page
-		const TopicFeedRoute = <Route
-			path="/topics"
-			render={props => <TopicFeed {...props}
-
-				activeUser={this.getState("activeUser")}
+				transition={this.transition}
+				exit={this.getState("exit")}
 
 			/>}
 		/>
 
-		// Route to the details page for a specific
-		// topic with the given >address<
-		const TopicRoute = <Route
-			path="/topic/:address"
-			render={props => <TopicPage {...props}
 
-				topicAddress={props.match.params.address}
+		// Route to the wallet page of the active user
+		const WalletRoute = <Route
+			path="/wallet"
+			render={props => <Wallet {...props}
+
 				activeUser={this.getState("activeUser")}
+				balance={this.getState("balance")}
+				transactions={this.getState("records", "transactions")}
 
-				getTopic={this.getTopic}
+				transition={this.transition}
+				exit={this.getState("exit")}
 
 			/>}
 		/>
@@ -1024,8 +1186,12 @@ class App extends Component {
 
 				activeUser={this.getState("activeUser")}
 
+				transition={this.transition}
+				exit={this.getState("exit")}
+
 			/>}
 		/>
+
 
 		// Route to the details page for a specific
 		// rule with the given >address<
@@ -1035,6 +1201,23 @@ class App extends Component {
 
 				ruleAddress={props.match.params.address}
 				activeUser={this.getState("activeUser")}
+
+				transition={this.transition}
+				exit={this.getState("exit")}
+
+			/>}
+		/>
+
+
+		// Route to the topic curation page
+		const TrendingRoute = <Route
+			path="/trending"
+			render={props => <Trending {...props}
+
+				activeUser={this.getState("activeUser")}
+
+				transition={this.transition}
+				exit={this.getState("exit")}
 
 			/>}
 		/>
@@ -1047,6 +1230,9 @@ class App extends Component {
 
 				activeUser={this.getState("activeUser")}
 
+				transition={this.transition}
+				exit={this.getState("exit")}
+
 			/>}
 		/>
 
@@ -1058,41 +1244,56 @@ class App extends Component {
 
 				podium={this.getState("podium")}
 				activeUser={this.getState("activeUser")}
+				balance={this.getState("balance")}
 
 				getUser={this.getUser}
 
 				search={this.search}
 				resetSearch={this.resetSearch}
 
+				followUser={this.followUser}
+				unfollowUser={this.unfollowUser}
+
 				loading={this.getState("search", "loading")}
 				target={this.getState("search", "target")}
 				results={this.getState("search", "results")}
 
+				transition={this.transition}
+				exit={this.getState("exit")}
+
 			/>}
 		/>
 
 
-
-		// Route to the main lobby
+		// Route to the lobby
 		const LobbyRoute = <Route
 			exact
 			path="/"
 			render={props => <Lobby {...props}
-
+				transition={this.transition}
+				exit={this.getState("exit")}
 			/>}
 		/>
 
-		// Route to the registration page
-		const RegisterRoute = <Route
-			path="/register"
-			render={props => <Register {...props}
-				podium={this.getState("podium")}
+
+		// Route to the About page
+		const AboutRoute = <Route
+			path="/about"
+			render={props => <About {...props}
+				transition={this.transition}
+				exit={this.getState("exit")}
 			/>}
 		/>
+
 
 
 		return <div ref="podium" className="app podium">
-			<div className="backdrop"></div>
+
+			<div className="backdrop" />
+			<div className={this.ready ?
+				"master-loading-mask master-loading-mask-off" :
+				"master-loading-mask master-loading-mask-on"} />
+
 			{!this.getState("podium") ?
 
 				<Loader /> :
@@ -1101,67 +1302,97 @@ class App extends Component {
 
 					<HUD
 
+						key="hud"
+
 						podium={this.getState("podium")}
 						activeUser={this.getState("activeUser")}
 
+						balance={this.getState("balance")}
+						transactions={this.getState("records", "transactions")}
+
 						getUser={this.getUser}
+
+						followUser={this.followUser}
+						unfollowUser={this.unfollowUser}
 
 						search={this.search}
 						resetSearch={this.resetSearch}
 						searchData={this.getState("search")}
 
 						alerts={this.getState("alerts")}
+						clearAlerts={this.clearAlerts}
 
-						throwPopup={this.throwPopup}
+						transition={this.transition}
+						exit={this.getState("exit")}
+						exitAll={this.getState("exitAll")}
+
 						signOut={this.signOut}
 
 						>
-						<Switch>
+						<Switch>	
+							
+							{ProfileRoute}
+							{IntegrityRoute}
+							{MinerRoute}
+							{SettingsRoute}
+
+							{AlertsRoute}
+							{SearchRoute}
+							{WalletRoute}
 
 							{FeedRoute}
 							{PostRoute}
-							
-							{ProfileRoute}
-							{WalletRoute}
-							{FollowersRoute}
-							{FollowingRoute}
-							{IntegrityRoute}
-							{AlertsRoute}
-
-							{TopicFeedRoute}
-							{TopicRoute}
-
 							{GovernanceRoute}
 							{RuleRoute}
-
-							{SettingsRoute}
-
-							{SearchRoute}
+							{TrendingRoute}
 							
+							{AboutRoute}
+
 							<Route component={Error404} />
 
 						</Switch>
+						{demoMenu}
+						<div
+							className="red-button demo-button card"
+							onClick={this.toggleDemoMenu.bind(this)}>
+							<p className="demo-button-text">demo</p>
+							{this.getState("demomenu") ?
+								<i className="fas fa-times demo-button-icon" /> :
+								<i className="fas fa-magic demo-button-icon" />
+							}
+							{this.getState("demoLoading") ?
+								<div className="demo-loader-holder">
+									<i className="fas fa-circle-notch demo-loader" />
+								</div>
+								: null
+							}
+						</div>
 					</HUD>
 
 					:
 
 					<LobbyHUD
 
+						key="hud"
+
 						podium={this.getState("podium")}
 						registerUser={this.registerUser}
 						signIn={this.signIn}
+
+						transition={this.transition}
+						exit={this.getState("exitAll")}
 
 						>
 						<Switch>
 
 							{LobbyRoute}
-							{RegisterRoute}
 
 							{ProfileRoute}
-							{TopicRoute}
 							{PostRoute}
 
 							{RuleRoute}
+
+							{AboutRoute}
 
 							<Redirect to="/" />
 
@@ -1169,16 +1400,6 @@ class App extends Component {
 					</LobbyHUD>
 
 			}
-
-			{demoMenu}
-			<div
-				className="red-button demo-button card"
-				onClick={this.toggleDemoMenu.bind(this)}>
-				{(this.state.data.get("demomenu")) ?
-					<span className="fas fa-times demo-button-icon"></span> :
-					<span className="fas fa-magic demo-button-icon"></span>
-				}
-			</div>
 
 		</div>
 
@@ -1189,13 +1410,14 @@ class App extends Component {
 
 // CLEAN UP
 
-	componentWillUnmount() {
+	immutableComponentWillUnmount() {
 
-		//TODO - Stop listening for alerts
+		// Interupt remaining exit transitions
+		clearTimeout(exit)
 
 		// Sign out
 		if (this.getState("activeUser")) {
-			this.signOut();
+			this.signOut()
 		}
 
 		// Close connections

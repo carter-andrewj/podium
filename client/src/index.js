@@ -14,7 +14,7 @@ require('events').EventEmitter.prototype._maxListeners = 1000;
 function rescale() {
 	Object.assign(document.getElementById("root").style, {
 		fontSize: Math.round(5 + (12 * (((3 * Math.pow(window.innerWidth, 0.85)) - 300) / 1300))) + "px",
-		lineHeight: 1.8 + (3 * ((window.innerWidth - 300) / 13000)) + "em"
+		lineHeight: (Math.round(100 * (1.8 + (3 * ((window.innerWidth - 300) / 13000)))) / 100.0) + "em"
 	})
 }
 let resizeTimer;

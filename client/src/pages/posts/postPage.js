@@ -32,7 +32,7 @@ class PostPage extends ImmutableComponent {
 							activeUser={this.props.activeUser}
 							balance={this.props.balance}
 
-							post={this.props.parent}
+							target={this.props.parent}
 							format="thread"
 
 							getUser={this.props.getUser}
@@ -59,7 +59,7 @@ class PostPage extends ImmutableComponent {
 							activeUser={this.props.activeUser}
 							balance={this.props.balance}
 
-							post={this.props.post}
+							target={this.props.post}
 							format="card"
 							suppressLabels={List(["reply", "promote"])}
 
@@ -114,49 +114,3 @@ class PostPage extends ImmutableComponent {
 }
 
 export default PostPage;
-
-
-
-// <div className="postpage-subject card">
-// 	<PostHeader
-
-// 		first={true}
-// 		activeUser={this.props.activeUser}
-// 		author={this.props.author}
-// 		post={this.props.post}>
-
-// 		{this.props.content}
-
-// 	</PostHeader>
-// 	{this.props.activeUser && this.props.post ?
-// 		<div className="newpost-holder">
-// 			<div
-// 				className="newpost-capture"
-// 				onMouseEnter={this.showReply.bind(this)}
-// 				onMouseLeave={this.hideReply.bind(this)}>
-// 				<div className="newpost card">
-// 					<Send
-
-// 						podium={this.props.podium}
-// 						activeUser={this.props.activeUser}
-// 						balance={this.props.balance}
-
-// 						getUser={this.props.getProfileFromID}
-
-// 						sendPost={this.props.sendPost}
-// 						postKey={this.props.post.address}
-
-// 						replyingTo={this.props.post}
-
-// 						open={open}
-// 						lock={this.lock}
-// 						unlock={this.unlock}
-// 						innerRef={ref => this.input = ref}
-
-// 					/>
-// 				</div>
-// 			</div>
-// 		</div>
-// 		: null
-// 	}
-// </div>

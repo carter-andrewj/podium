@@ -29,6 +29,12 @@ class ProfilePage extends ImmutableComponent {
 	}
 
 
+	immutableComponentWillMount() {
+		this.props.require("profile", "posts", "following", "followers")
+		this.props.autoUpdate(true)
+	}
+
+
 	immutableComponentDidUpdate() {
 		if (this.props.profile) {
 			const title = document.title.replace(/ /g,"").split("\u2022")
@@ -74,7 +80,7 @@ class ProfilePage extends ImmutableComponent {
 						podium={this.props.podium}
 						activeUser={this.props.activeUser}
 
-						from="user"
+						from="address"
 						users={followers}
 						
 						getUser={this.props.getUser}
@@ -97,7 +103,7 @@ class ProfilePage extends ImmutableComponent {
 						podium={this.props.podium}
 						activeUser={this.props.activeUser}
 
-						from="user"
+						from="address"
 						users={following}
 						
 						getUser={this.props.getUser}
@@ -119,6 +125,7 @@ class ProfilePage extends ImmutableComponent {
 					content = <div className="profile-feed-holder">
 						<PostFeed
 
+							from="address"
 							posts={posts.map(p => Map({ target: p }))}
 							format="card"
 
@@ -300,6 +307,7 @@ class ProfilePage extends ImmutableComponent {
 											activeUser={this.props.activeUser}
 											targetUser={this.props.user}
 
+											getUser={this.props.getUser}
 											followUser={this.props.followUser}
 											unfollowUser={this.props.unfollowUser}
 

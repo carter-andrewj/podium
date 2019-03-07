@@ -53,7 +53,7 @@ class PostFeed extends ImmutableComponent {
 
 							format={format}
 							from={this.props.from}
-							post={post.get("target")}
+							target={post.get("target")}
 
 							podium={this.props.podium}
 							activeUser={this.props.activeUser}

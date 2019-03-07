@@ -57,15 +57,8 @@ class FeedPage extends ImmutableComponent {
 	render() {
 
 		// Handle pending posts
-		let pending;
 		const pendCount = this.props.feedData.get("pending").size
-		if (pendCount > 0) {
-			pending = <div
-				className="pending-posts card"
-				onClick={() => this.props.publishPosts()}>
-				{`show ${pendCount} new posts`}
-			</div>
-		}
+		const pending = pendCount > 0
 
 		const threads = this.props.feedData.get("feed")
 			.interleave(this.props.feedData.get("markers"))
@@ -127,7 +120,21 @@ class FeedPage extends ImmutableComponent {
 							:
 							
 							<div className="feed-core">
-								{pending}
+
+								{pending ?
+									<div
+										className="pending-posts pending-posts-on card"
+										onClick={() => this.props.publishPosts()}>
+										{`${pendCount} new posts`}
+									</div>
+									:
+									<div className="pending-posts">
+										<p className="background-text">
+											up to date
+										</p>
+									</div>
+								}
+
 								<PostFeed
 
 									posts={threads}
@@ -149,6 +156,7 @@ class FeedPage extends ImmutableComponent {
 									exit={this.props.exit}
 
 								/>
+
 							</div>
 						}
 					</Fader>

@@ -56,6 +56,7 @@ class Expander extends ImmutableComponent {
 		var timeOut = (this.props.timeOut === 0) ? 0 : this.props.timeOut || timeIn;
 		var delayIn = (this.props.delayIn === 0) ? 0 : this.props.delayIn || this.props.delay || 0;
 		var delayOut = (this.props.delayOut === 0) ? 0 : this.props.delayOut || delayIn;
+		var margin = this.props.margin || 1.0
 
 		timeIn = timeIn / 2.0
 		timeOut = timeOut / 2.0
@@ -66,21 +67,27 @@ class Expander extends ImmutableComponent {
 			.set("off", Map({
 				maxHeight: "0px",
 				opacity: 0.0,
+				marginTop: 0.0,
 				transition:
 					`max-height ${timeIn}s ease-in ${delayIn}s,` +
+					`margin ${timeIn}s ease-in ${delayIn}s,` +
 					`opacity ${timeIn}s ease-in ${delayIn + timeIn}s`,
 				"--webkit-transition":
 					`max-height ${timeIn}s ease-in ${delayIn}s,` +
+					`margin ${timeIn}s ease-in ${delayIn}s,` +
 					`opacity ${timeIn}s ease-in ${delayIn + timeIn}s`
 			}))
 			.set("on", Map({
 				maxHeight: "100px",
 				opacity: 1.0,
+				marginTop: `${margin}rem`,
 				transition:
 					`max-height ${timeOut}s ease-in ${delayOut}s,` +
+					`margin ${timeOut}s ease-in ${delayOut}s,` +
 					`opacity ${timeOut}s ease-in ${delayOut + timeOut}s`,
 				"--webkit-transition":
 					`max-height ${timeOut}s ease-in ${delayOut}s,` +
+					`margin ${timeOut}s ease-in ${delayOut}s,` +
 					`opacity ${timeOut}s ease-in ${delayOut + timeOut}s`
 			}))
 			.setIn(["wait", "on"], 2.0 * 1.1 * (timeIn + delayIn))
@@ -94,7 +101,7 @@ class Expander extends ImmutableComponent {
 
 		const active = this.getState("active")
 		const show = (this.props.show === undefined) ?
-			this.ready : this.props.show
+			(this.ready && !this.props.exit) : this.props.show
 
 		return <div className="expander">
 			<div

@@ -1991,7 +1991,6 @@ p {
 .validator {
 	position: relative;
 	height: 1.8rem;
-	margin-bottom: 0.2rem;
 	background: transparent;
 }
 
@@ -2096,19 +2095,26 @@ p {
 .pending-posts {
 	height: 2rem;
 	margin-top: 1.3rem;
-	margin-left: 5rem;
-	margin-right: 5rem;
-	background: white;
+	margin-left: 8rem;
+	margin-right: 8rem;
 	border-radius: 1rem 1rem;
 	font-family: var(--titles);
-	color: var(--green);
 	line-height: 2rem;
+}
+
+.pending-posts-on {
+	color: var(--green);
 	cursor: pointer;
 }
 
-.pending-posts:hover {
+.pending-posts-on:hover {
 	background: var(--pale-green);
 	color: white;
+}
+
+.pending-posts-off {
+	color: var(--dark-grey);
+	cursor: default;
 }
 
 
@@ -2118,7 +2124,6 @@ p {
 .thread-holder {
     width: 38rem;
     margin: auto;
-    margin-top: 1rem;
 }
 
 .thread-card {
@@ -2245,7 +2250,6 @@ p {
 
 .postcard {
 	border-radius: 1.8rem 0 0 0;
-	margin-top: 1rem;
 }
 
 .post {
@@ -2289,7 +2293,7 @@ p {
 }
 
 .post-header-picture-loader {
-	margin-top: 0.6rem
+	margin-top: 0.7rem
 }
 
 .post-header-picture {
@@ -4123,7 +4127,7 @@ p {
 }
 
 .button-loader {
-	animation: spin 2s infinite ease-in-out;
+	margin-top: -0.1rem;
 }
 
 

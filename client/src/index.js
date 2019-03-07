@@ -8,7 +8,7 @@ import registerServiceWorker from './registerServiceWorker';
 
 // Swallow event emitter warning
 //TODO - Remove this once we have the ability to close radix channels
-require('events').EventEmitter.prototype._maxListeners = 1000;
+require('events').EventEmitter.prototype._maxListeners = 100000;
 
 // Scale to window
 function rescale() {

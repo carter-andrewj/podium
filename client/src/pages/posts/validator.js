@@ -87,7 +87,7 @@ class Validator extends ImmutableComponent {
 		}
 
 		return (
-			<Expander time={0.5}>
+			<Expander time={0.5} margin={0.2}>
 				<div
 					className="validator"
 					style={{ color: color }}>

@@ -1068,7 +1068,7 @@ class App extends ImmutableComponent {
 				activeUser={this.getState("activeUser")}
 				balance={this.getState("balance")}
 
-				post={props.match.params.address}
+				target={props.match.params.address}
 				from="address"
 				format="page"
 

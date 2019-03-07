@@ -11,6 +11,12 @@ import MiniLoader from '../../components/miniLoader';
 
 class ProfileCard extends ImmutableComponent {
 
+
+	immutableComponentWillMount() {
+		this.props.require("profile")
+	}
+
+
 	render() {
 
 		// Check if user is loaded
@@ -95,6 +101,7 @@ class ProfileCard extends ImmutableComponent {
 									activeUser={this.props.activeUser}
 									targetUser={this.props.user}
 
+									getUser={this.props.getUser}
 									followUser={this.props.followUser}
 									unfollowUser={this.props.unfollowUser}
 

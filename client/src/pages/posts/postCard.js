@@ -25,20 +25,7 @@ class PostCard extends ImmutableComponent {
 					getPost={this.props.getPost}
 					sendPost={this.props.sendPost}
 
-					require={this.require}
-
-					post={this.getState("post")}
-					parent={this.getState("parent")}
-					grandparent={this.getState("grandparent")}
-					origin={this.getState("origin")}
-					thread={this.getState("thread")}
-
-					replies={this.getState("replies")}
-
-					author={this.getState("author")}
-					parentAuthor={this.getState("parentAuthor")}
-
-					mentions={this.getState("mentions")}
+					target={this.props.post}
 
 					first={true}
 					format="content"

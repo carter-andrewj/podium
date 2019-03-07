@@ -754,7 +754,7 @@ class Send extends ImmutableComponent {
 
 		const open = this.props.open
 		const valid = (remainder < 0) ? "failed" : this.getState("valid")
-		const sending = this.getState("sending")
+		const sending = this.getState("sending") || this.getState("sent")
 		const filled = this.getState("raw") !== ""
 		const reply = this.props.replyingTo ? true : false
 		const highlight = this.props.highlight || this.getState("highlight")
@@ -845,7 +845,7 @@ class Send extends ImmutableComponent {
 						captionOffset={0.8}
 						onClick={() => this.sendPost()}>
 						{((valid === "pending" && filled) || sending) ?
-							<MiniLoader color="white" /> :
+							<MiniLoader size={0.7} /> :
 							(valid === "failed") ?
 								<i className="fas fa-ban button-icon" /> :
 								reply ?

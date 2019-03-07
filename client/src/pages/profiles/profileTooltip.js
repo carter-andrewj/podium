@@ -8,6 +8,11 @@ import MiniLoader from '../../components/miniLoader';
 
 class ProfileTooltip extends ImmutableComponent {
 
+
+	immutableComponentWillMount() {
+		this.props.require("profile")
+	}
+
 	//TODO - Add bio on mouseover
 
 	render() {
@@ -36,6 +41,15 @@ class ProfileTooltip extends ImmutableComponent {
 				: null
 			}
 
+			{this.props.profile ?
+				<div className="profiletip-bio">
+					<p className="profiletip-bio-text">
+						{this.props.profile.get("bio")}
+					</p>
+				</div>
+				: null
+			}
+
 			<div className="profiletip-buttons">
 
 				<div className="profiletip-button">
@@ -44,6 +58,7 @@ class ProfileTooltip extends ImmutableComponent {
 						activeUser={this.props.activeUser}
 						targetUser={this.props.user}
 
+						getUser={this.props.getUser}
 						followUser={this.props.followUser}
 						unfollowUser={this.props.unfollowUser}
 
@@ -51,6 +66,8 @@ class ProfileTooltip extends ImmutableComponent {
 						captionOffset={0.8}
 						size={1.6}
 						
+						callback={this.props.reload}
+
 					/>
 				</div>
 

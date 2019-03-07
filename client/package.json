@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@carter_andrewj/podix": "^2.6.18",
+    "@carter_andrewj/podix": "^2.6.19",
     "ajv": "^6.9.1",
     "immutable": "^4.0.0-rc.12",
     "radixdlt": "^1.0.6-alpha",

@@ -10,6 +10,11 @@ import MiniLoader from '../../components/miniLoader';
 
 class ProfileTab extends ImmutableComponent {
 
+	immutableComponentWillMount() {
+		this.props.require("profile")
+	}
+	
+
 	render() {
 		return !this.props.user ?
 			null :
@@ -37,12 +42,15 @@ class ProfileTab extends ImmutableComponent {
 							activeUser={this.props.activeUser}
 							targetUser={this.props.user}
 
+							getUser={this.props.getUser}
 							followUser={this.props.followUser}
 							unfollowUser={this.props.unfollowUser}
 
 							captionLocation="left"
 							captionOffset={0.2}
 							size={1.4}
+
+							callback={this.props.reload}
 							
 						/>
 					</div>

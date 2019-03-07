@@ -10,13 +10,17 @@ class ImmutableComponent extends Component {
 		this.state = {
 			immutableState: fromJS({
 				_ready: false,
-				_mounted: false,
-				_mounting: true,
 				...state
 			})
 		}
+		this.mounting = true
+		this.mounted = false
+		this._readyTimer = null
 		this.immutableComponentWillMount = this.immutableComponentWillMount.bind(this)
 		this.immutableComponentDidMount = this.immutableComponentDidMount.bind(this)
+		this.shouldImmutableComponentUpdate = this.shouldImmutableComponentUpdate.bind(this)
+		this.immutableComponentWillUpdate = this.immutableComponentWillUpdate.bind(this)
+		this.immutableComponentDidUpdate = this.immutableComponentDidUpdate.bind(this)
 		this.immutableComponentWillUnmount = this.immutableComponentWillUnmount.bind(this)
 	}
 
@@ -27,7 +31,7 @@ class ImmutableComponent extends Component {
 	getState() {
 		const args = Array.prototype.slice.call(arguments)
 		if (args.length === 0) {
-			return this.state.immutableState.toJS()
+			return this.state.immutableState
 		} else if (args.length === 1) {
 			return this.state.immutableState.get(args[0])
 		} else {
@@ -37,10 +41,13 @@ class ImmutableComponent extends Component {
 
 
 	updateState(up, callback) {
-		if (this.getState("_mounted") || this.getState("_mounting")) {
+		if (this.mounted || this.mounting) {
 			this.setState(
 				({ immutableState }) => {
-					return { immutableState: up(immutableState) }
+					return {
+						_ready: this.ready,
+						immutableState: up(immutableState)
+					}
 				},
 				callback
 			)
@@ -61,15 +68,25 @@ class ImmutableComponent extends Component {
 	immutableComponentDidMount() {}
 
 	componentDidMount() {
-		this.updateState(state => state
-			.set("_mounted", true)
-			.set("_mounting", false)
-		)
-		setTimeout(
-			() => this.updateState(state => state.set("_ready", true)),
+		this.mounted = true
+		this.mounting = false
+		this._readyTimer = setTimeout(
+			() => this.updateState(
+				state => state.set("_ready", true)
+			),
 			10
 		)
 		this.immutableComponentDidMount()
+	}
+
+
+	shouldImmutableComponentUpdate(nextProps, nextState) {
+		return true
+	}
+
+	shouldComponentUpdate(nextProps, nextState) {
+		return this.shouldImmutableComponentUpdate(
+			nextProps, nextState.immutableState)
 	}
 
 
@@ -90,17 +107,12 @@ class ImmutableComponent extends Component {
 	immutableComponentWillUnmount() {}
 
 	componentWillUnmount() {
-		this.updateState(state => state.set("_mounted", false))
+		clearTimeout(this._readyTimer)
 		this.immutableComponentWillUnmount()
+		this.mounted = false
 	}
 
 
-
-// HELPER METHODS
-
-	get mounted() {
-		return this.getState("_mounted")
-	}
 
 	get ready() {
 		return this.getState("_ready")

@@ -1,7 +1,7 @@
 import React from 'react';
 import ImmutableComponent from '../../components/immutableComponent';
 
-import { Map, List, fromJS } from 'immutable';
+import { Set, fromJS, is } from 'immutable';
 
 import ProfilePage from './profilePage';
 import ProfileCard from './profileCard';
@@ -11,17 +11,12 @@ import ProfileTab from './profileTab';
 
 const emptyState = {
 	user: null,
-	valid: true,
 	profile: null,
 	posts: null,
 	followers: null,
 	following: null,
-	loading: {
-		profile: false,
-		posts: false,
-		followers: false,
-		following: false
-	}
+	required: Set(),
+	valid: true
 }
 
 
@@ -30,19 +25,51 @@ class Profile extends ImmutableComponent {
 
 	constructor() {
 		super(emptyState)
+		this.timer = null
+		this.loadUser = this.loadUser.bind(this)
+		this.loadUserFromID = this.loadUserFromID.bind(this)
+		this.loadUserFromAddress = this.loadUserFromAddress.bind(this)
 		this.setUser = this.setUser.bind(this)
+		this.reloadUser = this.reloadUser.bind(this)
+		this.autoUpdate = this.autoUpdate.bind(this)
+		this.require = this.require.bind(this)
+		this.loadRequirements = this.loadRequirements.bind(this)
+		this.getRequirement = this.getRequirement.bind(this)
 	}
 
 
-	immutableComponentDidMount() {
-		this.loadUser()
+	immutableComponentWillMount() {
+		if (this.props.target) {
+			this.loadUser()
+		}
+	}
+
+
+	shouldImmutableComponentUpdate(lastProps, lastState) {
+		if (!is (this.getState(), lastState)) {
+			return true
+		}
+		if (this.props.from &&
+				(this.props.from === "address" || this.props.from === "id")) {
+			if (this.props.target !== lastProps.target) {
+				return true
+			}
+		} else {
+			if (this.props.target && (!lastProps.target ||
+					!is(this.props.target.cache, lastProps.target.cache))) {
+				return true
+			}
+		}
+		return false
 	}
 
 
 	immutableComponentDidUpdate(lastProps) {
 		if (lastProps.target !== this.props.target) {
-			this.updateState(state => state.merge(fromJS(emptyState)))
-			this.loadUser()
+			this.updateState(
+				state => state.merge(fromJS(emptyState)),
+				this.loadUser
+			)
 		}
 	}
 
@@ -50,102 +77,200 @@ class Profile extends ImmutableComponent {
 	loadUser() {
 		if (this.props.from && this.props.from === "id") {
 			this.loadUserFromID(this.props.target)
+				.catch(this.invalidUser)
 		} else if (this.props.from && this.props.from === "address") {
 			this.loadUserFromAddress(this.props.target)
+				.catch(this.invalidUser)
 		} else {
 			this.setUser(this.props.target)
+				.catch(this.invalidUser)
 		}
 	}
 
 
-	loadUserFromID(id) {
-		this.props.podium
-			.isUser(id)
-			.then(address => {
-				if (address) {
-					this.loadUserFromAddress(address)
+	reloadUser(force = false) {
+		return new Promise((resolve, reject) => {
+			if (this.props.from && this.props.from === "id") {
+				this.loadUserFromID(this.props.target, force)
+					.then(resolve)
+					.catch(reject)
+			} else if (this.props.from && this.props.from === "address") {
+				this.loadUserFromAddress(this.props.target, force)
+					.then(resolve)
+					.catch(reject)
+			} else {
+				this.loadUserFromAddress(this.props.target.address, force)
+					.then(resolve)
+					.catch(reject)
+			}
+		})
+	}
+
+
+	loadUserFromID(id, force = false) {
+		return new Promise((resolve, reject) => {
+			this.props.podium
+				.isUser(id)
+				.then(address => {
+					if (address) {
+						this.loadUserFromAddress(address, force)
+							.then(resolve)
+							.catch(reject)
+					} else {
+						reject(`Unknown User ID: ${id}`)
+					}
+				})
+				.catch(reject)
+		})
+	}
+
+
+	loadUserFromAddress(address, force = false) {
+		return new Promise((resolve, reject) => {
+			this.props.getUser(address, force)
+				.then(user => this.setUser(user, force))
+				.then(resolve)
+				.catch(reject)
+		})
+	}
+
+
+	setUser(user, force = false) {
+		return new Promise((resolve, reject) => {
+			this.updateState(
+				state => state.set("user", user),
+				() => this.loadRequirements(force)
+					.then(resolve)
+					.catch(reject)
+			)
+		})
+	}
+
+
+	invalidUser(error) {
+		console.error(error)
+		this.updateState(state => state.set("valid", false))
+	}
+
+
+
+
+	autoUpdate(flag = true) {
+		clearTimeout(this.timer)
+		if (flag) {
+			this.timer = setTimeout(
+				() => this.reloadUser(true)
+					.then(() => this.autoUpdate(true))
+					.catch(console.error),
+				3000
+			)
+		}
+	}
+
+
+
+	require() {
+		return new Promise((resolve, reject) => {
+			var requirements = Set(Array.prototype.slice.call(arguments))
+			this.updateState(
+				state => state.update(
+					"required",
+					r => r.union(requirements)
+				),
+				() => this.loadRequirements()
+			)
+		})
+	}
+
+
+	loadRequirements(force = false) {
+		return new Promise((resolve, reject) => {
+			if (this.getState("user")) {
+				const requirements = this.getState("required")
+				var fetching = requirements
+					.map(r => this.getRequirement(r, force))
+					.toJS()
+				if (requirements.length === 1) {
+					resolve(fetching[0])
 				} else {
-					this.updateState(state => state.set("valid", false))
+					Promise.all(fetching)
+						.then(resolve)
+						.catch(reject)
 				}
-			})
-			.catch(error => {
-				console.error(error)
-				this.updateState(state => state.set("valid", false))
-			})
-
+			} else {
+				resolve()
+			}
+		})
 	}
 
 
-	loadUserFromAddress(address) {
-		this.props
-			.getUser(address, false)
-			.then(this.setUser)
-			.catch(error => {
-				console.error(error)
-				this.updateState(state => state.set("valid", false))
-			})
-	}
+	getRequirement(id, force = false) {
+		switch (id) {
 
+			case "profile": return this.requireProfile(force)
 
+			case "posts": return this.requirePosts(force)
 
-	setUser(user) {
+			case "followers": return this.requireFollowers(force)
+			case "following": return this.requireFollowing(force)
 
-		this.updateState(state => state
-			.set("user", user)
-			.set("loading", Map({
-				profile: true,
-				posts: true,
-				followers: true,
-				following: true
-			}))
-		)
-
-		// Load profile data
-		user.profile()
-			.then(profile => this.updateState(state => state
-				.set("profile", profile)
-				.setIn(["loading", "profile"], false)
-			))
-			.catch(error => console.error(error))
-
-		// Load support data
-		if (!List(["tab", "tooltip"]).includes(this.props.format)) {
-
-			// Load user's posts
-			user.postIndex()
-				.then(index => Promise.all(
-					index.map(a => this.props.getPost(a, false))
-				))
-				.then(posts => this.updateState(state => state
-					.set("posts", List(posts))
-					.setIn(["loading", "posts"], false)
-				))
-				.catch(error => console.error(error))
-
-			// Load this user's followers
-			user.followerIndex()
-				.then(index => Promise.all(
-					index.map(a => this.props.getUser(a, false))
-				))
-				.then(followers => this.updateState(state => state
-					.set("followers", List(followers))
-					.setIn(["loading", "followers"], false)
-				))
-				.catch(error => console.error(error))
-
-			// Load user's followed by this user
-			user.followingIndex()
-				.then(index => Promise.all(
-					index.map(a => this.props.getUser(a, false))
-				))
-				.then(following => this.updateState(state => state
-					.set("following", List(following))
-					.setIn(["loading", "following"], false)
-				))
-				.catch(error => console.error(error))
+			default:
+				console.error(`Unknown user requirement: ${id}`)
+				return null
 
 		}
+	}
 
+
+	requireProfile(force = false) {
+		return new Promise((resolve, reject) => {
+			this.getState("user")
+				.profile(force)
+				.then(profile => this.updateState(
+					state => state.set("profile", profile),
+					resolve
+				))
+				.catch(reject)
+		})
+	}
+
+
+	requirePosts(force = false) {
+		return new Promise((resolve, reject) => {
+			this.getState("user")
+				.postIndex(force)
+				.then(posts => this.updateState(
+					state => state.set("posts", posts),
+					resolve
+				))
+				.catch(reject)
+		})
+	}
+
+
+	requireFollowers(force = false) {
+		return new Promise((resolve, reject) => {
+			this.getState("user")
+				.followerIndex(force)
+				.then(followers => this.updateState(
+					state => state.set("followers", followers),
+					resolve
+				))
+				.catch(reject)
+		})
+	}
+
+
+	requireFollowing(force = false) {
+		return new Promise((resolve, reject) => {
+			this.getState("user")
+				.followingIndex(force)
+				.then(following => this.updateState(
+					state => state.set("following", following),
+					resolve
+				))
+				.catch(reject)
+		})
 	}
 
 
@@ -178,19 +303,21 @@ class Profile extends ImmutableComponent {
 
 		return <ProfileFormat
 
+			podium={this.props.podium}
 			activeUser={this.props.activeUser}
 
 			side={this.props.side}
 
 			valid={this.getState("valid")}
+			require={this.require}
+			autoUpdate={this.autoUpdate}
+			reload={this.reloadUser}
 
 			user={this.getState("user")}
 			profile={this.getState("profile")}
 			posts={this.getState("posts")}
 			followers={this.getState("followers")}
 			following={this.getState("following")}
-
-			reload={this.loadUser}
 
 			getUser={this.props.getUser}
 			getPost={this.props.getPost}
@@ -203,6 +330,11 @@ class Profile extends ImmutableComponent {
 
 		/>
 
+	}
+
+
+	immutableComponentWillUnmount() {
+		clearTimeout(this.timer)
 	}
 
 }

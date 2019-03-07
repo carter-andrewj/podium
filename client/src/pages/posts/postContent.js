@@ -2,12 +2,14 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import ImmutableComponent from '../../components/immutableComponent';
 
-import { Map, List, Set } from 'immutable';
+import { Map, List, Set, fromJS } from 'immutable';
 
-import { formatNumber } from 'utils';
+import { formatNumber, markupPost } from 'utils';
 
 import PostHeader from './postHeader';
 import Send from './send';
+
+import Profile from '../profiles/profile'
 
 import Button from '../../components/buttons/button';
 import MiniLoader from '../../components/miniLoader';
@@ -19,9 +21,13 @@ import MiniLoader from '../../components/miniLoader';
 class PostContent extends ImmutableComponent {
 
 	constructor() {
+
 		super({
 
+			content: "",
+
 			reference: null,
+			referenceType: null,
 			refTimer: null,
 			links: Map(),
 
@@ -37,6 +43,10 @@ class PostContent extends ImmutableComponent {
 		this.unlock = this.unlock.bind(this)
 		this.showReply = this.showReply.bind(this)
 		this.hideReply = this.hideReply.bind(this)
+
+		this.makeLink = this.makeLink.bind(this)
+		this.toLink = this.toLink.bind(this)
+		this.externalLink = this.externalLink.bind(this)
 
 	}
 
@@ -85,8 +95,204 @@ class PostContent extends ImmutableComponent {
 // SETUP
 
 	immutableComponentDidMount() {
-		this.props.require("content", "author", "replies",
-			"parent", "parentAuthor")
+		this.props.require("author", "replies", "parent", "parentAuthor")
+		this.buildContent()
+	}
+
+
+	immutableComponentDidUpdate(lastProps) {
+		if (this.props.post && (!lastProps.post ||
+				this.props.post.text !== lastProps.post.text)) {
+			this.props.require("author", "replies", "parent", "parentAuthor")
+			this.buildContent()
+		}
+	}
+
+
+
+// CONTENT
+
+	buildContent() {
+		if (!this.props.post) {
+			return
+		} else {
+			return new Promise(async (resolve, reject) => {
+
+				// Load post references
+				const references = this.props.mentions || Set()
+				const only = fromJS(references)
+					.flatten()
+					.map(r => `@${r.id}`)
+					.toSet()
+				//TODO - Split this into separate processes for each
+				//		 category of mention. To simply filter by ID
+				//		 alone would create an edge case for topics
+				//		 and users with the same ID.
+
+				// Markup raw post string
+				const post = this.props.post
+				const postID = this.props.post.address
+				const content = markupPost(post.text || "", undefined, only)
+
+				// Count lines in output
+				const lineNum = content.reduce((x, p) => Math.max(x, p.line), 0) + 1;
+
+				// Build each line
+				var lines = []
+				for (let l = 0; l < lineNum; l++) {
+
+					// Build line
+					const words = content.filter(p => p.line === l).map((p, w) => {
+
+						// Create word ID
+						const wordID = postID + "-" + l + "-" + w;
+
+						//TODO - Handle edge-case with a post containing
+						//		 2 references to the same entity. In this
+						//		 case, there will currently be links and
+						//		 elements with duplicate keys.
+
+						// Handle word type
+						let word;
+						switch (p.type) {
+
+							// Links
+							case ("link"):
+								word = <span
+									key={wordID}
+									className="post-word post-link"
+									onMouseEnter={() => this.showReference("url", p.reference)}
+									onMouseLeave={() => this.hideReference()}
+									onClick={event => this.externalLink(event, p.reference)}>
+									{p.word}
+								</span>
+								break;
+
+							// Mentions
+							case ("mention"):
+								word = <span
+									key={wordID}
+									onMouseEnter={() => this.showReference("user", p.reference)}
+									onMouseLeave={() => this.hideReference()}
+									onClick={event => this.toLink(event, p.reference)}
+									className="post-word post-mention">
+									<Link
+										to={`/user/${p.reference}`}
+										innerRef={ref => this.makeLink(p.reference, ref)}
+										style={{ display: "none" }}
+									/>
+									{p.word}
+								</span>
+								break;
+
+							// Topics
+							case ("topic"):
+								word = <span
+									key={wordID}
+									onMouseEnter={() => this.showReference("topic", p.reference)}
+									onMouseLeave={() => this.hideReference()}
+									onClick={event => this.toLink(event, p.reference)}
+									className="post-word post-topic">
+									<Link
+										to={`/topic/${p.reference}`}
+										innerRef={ref => this.makeLink(p.reference, ref)}
+										style={{ display: "none" }}
+									/>
+									{p.word}
+								</span>
+								break;
+
+							//TODO - Media
+
+							// Otherwise, return the word alone
+							default:
+								word = <span
+									key={wordID}
+									className="post-word">
+									{p.word}
+								</span>
+
+						}
+
+						return word;
+
+					});
+
+					// Add line to output
+					lines.push(<p
+						key={postID + "-" + l}
+						className="post-line">
+						{words}
+					</p>)
+
+				}
+
+				// Wrap and store result
+				this.updateState(
+					state => state.set("content",
+						<div className="post-content">
+							{lines}
+						</div>
+					),
+					resolve
+				)
+
+			})
+		}
+	}
+
+
+
+// REFERENCES
+
+	makeLink(id, ref) {
+		this.updateState(state => state
+			.update("links", l => l.set(id, ref))
+		)
+	}
+
+
+	toLink(event, id) {
+		if (event) { event.stopPropagation() }
+		this.props.transition(
+			() => this.getState("links", id).click()
+		)
+	}
+
+
+	externalLink(event, url) {
+		event.stopPropagation()
+		window.open(url, "_blank")
+	}
+
+
+	showReference(type, reference) {
+
+		// Stop timeout
+		clearTimeout(this.getState("refTimer"))
+
+		// Switch to new reference, if required
+		if (reference !== this.getState("reference")) {
+			this.updateState(state => state
+				.set("reference", reference)
+				.set("referenceType", type)
+			)
+		}
+
+	}
+
+
+	hideReference() {
+		clearTimeout(this.getState("refTimer"))
+		this.updateState(state => state
+			.set("refTimer", setTimeout(
+				() => this.updateState(state => state
+					.set("reference", null)
+					.set("referenceType", null)
+				),
+				1000
+			))
+		)
 	}
 
 
@@ -105,6 +311,8 @@ class PostContent extends ImmutableComponent {
 		const sanctions = this.props.promos || Set()
 		const replies = this.props.replies || Set()
 		const suppress = this.props.suppressLabels || List()
+
+		const reference = this.getState("reference")
 
 		let labels = List()
 		if (post && post.depth > 0 && !suppress.includes("reply")) {
@@ -129,18 +337,45 @@ class PostContent extends ImmutableComponent {
 			)
 		}
 		
-		return !post ? null :
+		return (
 			<div className={first ? "post post-first" : "post"}>
 
-				<Link
-					to={`/post/${post.address}`}
-					innerRef={ref => this.postLink = ref}
-					style={{ display: "none" }}
-				/>
+				{post ?
+					<Link
+						to={`/post/${post.address}`}
+						innerRef={ref => this.postLink = ref}
+						style={{ display: "none" }}
+					/>
+					: null
+				}
 
-				<div className="post-tooltip-holder">
-					{this.props.reference}
-				</div>
+				{reference ?
+					<div
+						className="post-tooltip-holder"
+						onMouseEnter={() => this.showReference()}
+						onMouseLeave={() => this.hideReference()}>
+						<Profile
+
+							key={`tooltip-${this.props.post.address}-${reference}`}
+
+							podium={this.props.podium}
+							activeUser={this.props.activeUser}
+
+							from="id"
+							target={reference}
+							
+							getUser={this.props.getUser}
+
+							followUser={this.props.followUser}
+							unfollowUser={this.props.unfollowUser}
+
+							format="tooltip"
+							side="left"
+
+						/>
+					</div>
+					: null
+				}
 
 				<div
 					className={first ?
@@ -149,7 +384,10 @@ class PostContent extends ImmutableComponent {
 					}
 					onMouseEnter={this.highlight.bind(this)}
 					onMouseLeave={this.unlight.bind(this)}
-					onClick={() => this.postLink.click()}>
+					onClick={this.postLink ?
+						() => this.postLink.click()
+						: null
+					}>
 
 					<PostHeader
 						first={first}
@@ -159,7 +397,7 @@ class PostContent extends ImmutableComponent {
 
 						{labels}
 
-						{this.props.content}
+						{this.getState("content")}
 
 					</PostHeader>
 
@@ -178,10 +416,12 @@ class PostContent extends ImmutableComponent {
 										transparent={true}
 										onClick={() => console.log("promote view")}>
 										{!promos ?
-											<MiniLoader
-												size={1.2}
-												color={highlight ? "var(--dark-grey)" : "var(--grey)"}
-											/>
+											<div className="button-loader">
+												<MiniLoader
+													size={0.6}
+													color={highlight ? "var(--dark-grey)" : "var(--grey)"}
+												/>
+											</div>
 											:
 											<p className="button-inner-text">
 												{promos.size === 0 ?
@@ -218,10 +458,12 @@ class PostContent extends ImmutableComponent {
 										off={promos.size === 0}
 										onClick={() => console.log("view sanctions")}>
 										{!sanctions ?
-											<MiniLoader
-												size={1.2}
-												color={highlight ? "var(--dark-grey)" : "var(--grey)"}
-											/>
+											<div className="button-loader">
+												<MiniLoader
+													size={0.6}
+													color={highlight ? "var(--dark-grey)" : "var(--grey)"}
+												/>
+											</div>
 											:
 											<p className="button-inner-text">
 												{sanctions.size === 0 ?
@@ -258,10 +500,12 @@ class PostContent extends ImmutableComponent {
 										off={replies.size === 0}
 										onClick={() => this.postLink.click()}>
 										{!this.props.replies ?
-											<MiniLoader
-												size={1.2}
-												color={highlight ? "var(--dark-grey)" : "var(--grey)"}
-											/>
+											<div className="button-loader">
+												<MiniLoader
+													size={0.6}
+													color={highlight ? "var(--dark-grey)" : "var(--grey)"}
+												/>
+											</div>
 											:
 											<p className="button-inner-text">
 												{replies.size === 0 ?
@@ -301,7 +545,7 @@ class PostContent extends ImmutableComponent {
 
 				</div>
 
-				{this.props.activeUser ?
+				{this.props.activeUser && this.props.post ?
 					<div className={open ?
 							"post-reply post-reply-open" :
 							"post-reply post-reply-closed"
@@ -333,7 +577,13 @@ class PostContent extends ImmutableComponent {
 				}
 
 			</div>
+		)
 
+	}
+
+
+	immutableComponentWillUnmount() {
+		clearTimeout(this.getState("refTimer"))
 	}
 
 }

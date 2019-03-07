@@ -14,13 +14,13 @@ class FollowButton extends ImmutableComponent {
 		})
 	}
 
-	immutableComponentWillMount() {
+	immutableComponentDidMount() {
 		this.checkFollowing()
 	}
 
 	immutableComponentDidUpdate(lastProps) {
-		if (this.getState("following") !== undefined &&
-				(!this.props.targetUser || !this.props.activeUser ||
+		if (this.props.targetUser && this.props.activeUser &&
+				(!lastProps.activeUser || !lastProps.targetUser ||
 				 this.props.activeUser.address !== lastProps.activeUser.address ||
 				 this.props.targetUser.address !== lastProps.targetUser.address)) {
 			this.updateState(
@@ -44,14 +44,22 @@ class FollowButton extends ImmutableComponent {
 
 	follow() {
 		return new Promise((resolve, reject) => {
-			console.log("following")
 			this.updateState(
 				state => state.set("loading", true),
 				() => this.props
 					.followUser(this.props.targetUser.address)
-					.then(() => this.updateState(state => state
-						.set("loading", false)
-						.set("following", true)
+					.then(() => Promise.all([
+						this.props.getUser(this.props.targetUser.address),
+						this.props.getUser(this.props.activeUser.address)
+					]))
+					.then(() => this.updateState(
+						state => state
+							.set("loading", false)
+							.set("following", true),
+						() => {
+							if (this.props.callback) { this.props.callback() }
+							resolve()
+						}
 					))
 					.catch(console.error)
 			)
@@ -60,14 +68,22 @@ class FollowButton extends ImmutableComponent {
 
 	unfollow() {
 		return new Promise((resolve, reject) => {
-			console.log("unfollowing")
 			this.updateState(
 				state => state.set("loading", true),
 				() => this.props
 					.unfollowUser(this.props.targetUser.address)
-					.then(() => this.updateState(state => state
-						.set("loading", false)
-						.set("following", false)
+					.then(() => Promise.all([
+						this.props.getUser(this.props.targetUser.address),
+						this.props.getUser(this.props.activeUser.address)
+					]))
+					.then(() => this.updateState(
+						state => state
+							.set("loading", false)
+							.set("following", false),
+						() => {
+							if (this.props.callback) { this.props.callback() }
+							resolve()
+						}
 					))
 					.catch(console.error)
 			)
@@ -108,10 +124,9 @@ class FollowButton extends ImmutableComponent {
 				}
 
 				children={(!ready || loading) ?
-					<MiniLoader
-						size={0.7}
-						color={following ? "var(--green)" : "white"}
-					/>
+					<div className="button-loader">
+						<MiniLoader size={0.7} />
+					</div>
 					:
 					<i className="fas fa-eye button-icon" />
 				}

@@ -49,8 +49,6 @@ class PostThread extends ImmutableComponent {
 		const thread = List([...parentage, this.props.post])
 		const stale = this.props.stale && !this.getState("ignoreStale")
 
-		console.log("thread", this.props.podium)
-
 		// Render thread
 		return !this.props.post ?
 			null :
@@ -61,7 +59,7 @@ class PostThread extends ImmutableComponent {
 						{thread
 							.map((post, i) => {
 
-								if (post.spacer) {
+								if (post && post.spacer) {
 
 									if (this.getState("filling")) {
 										return <div
@@ -89,7 +87,7 @@ class PostThread extends ImmutableComponent {
 										<Post
 
 											key={"post-" + post.address}
-											post={post}
+											target={post}
 											format="content"
 											first={i === 0}
 											suppressLabels={List(["reply"])}

@@ -10,7 +10,7 @@ class Loader extends ImmutableComponent {
 				<div
 					style={{
 						transform: `scale(${this.props.size || 1.0})`,
-						color: this.props.color || "var(--green)"
+						color: this.props.color || "inherit"
 					}}
 					className="miniloader-holder">
 					<span className="miniloader-dot miniloader-dot-1">&#183;</span>

@@ -39,6 +39,7 @@ class AlertsPage extends ImmutableComponent {
 							/>)
 							.toList()
 						}
+						<div className="feed-spacer" />
 						<div className="footer-spacer">
 							<p className="footer-text background-text">
 								{this.props.alerts.size > 0 ?

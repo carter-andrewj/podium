@@ -20,6 +20,14 @@ const emptyState = {
 }
 
 
+function placeholder(address) {
+	return {
+		address: address,
+		placeholder: true
+	}
+}
+
+
 
 class Profile extends ImmutableComponent {
 
@@ -45,18 +53,21 @@ class Profile extends ImmutableComponent {
 	}
 
 
-	shouldImmutableComponentUpdate(lastProps, lastState) {
-		if (!is (this.getState(), lastState)) {
+	shouldImmutableComponentUpdate(nextProps, nextState) {
+		if (!is(nextState, this.getState())) {
 			return true
 		}
-		if (this.props.from &&
-				(this.props.from === "address" || this.props.from === "id")) {
-			if (this.props.target !== lastProps.target) {
+		if (nextProps.exit !== this.props.exit) {
+			return true
+		}
+		if (nextProps.from &&
+				(nextProps.from === "address" || nextProps.from === "id")) {
+			if (nextProps.target !== this.props.target) {
 				return true
 			}
 		} else {
-			if (this.props.target && (!lastProps.target ||
-					!is(this.props.target.cache, lastProps.target.cache))) {
+			if (nextProps.target && (!this.props.target ||
+					!is(nextProps.target.cache, this.props.target.cache))) {
 				return true
 			}
 		}
@@ -127,10 +138,13 @@ class Profile extends ImmutableComponent {
 
 	loadUserFromAddress(address, force = false) {
 		return new Promise((resolve, reject) => {
-			this.props.getUser(address, force)
-				.then(user => this.setUser(user, force))
-				.then(resolve)
-				.catch(reject)
+			this.updateState(
+				state => state.set("user", placeholder(address)),
+				() => this.props.getUser(address, force)
+					.then(user => this.setUser(user, force))
+					.then(resolve)
+					.catch(reject)
+			)
 		})
 	}
 
@@ -185,7 +199,7 @@ class Profile extends ImmutableComponent {
 
 	loadRequirements(force = false) {
 		return new Promise((resolve, reject) => {
-			if (this.getState("user")) {
+			if (this.getState("user") && !this.getState("user", "placeholder")) {
 				const requirements = this.getState("required")
 				var fetching = requirements
 					.map(r => this.getRequirement(r, force))
@@ -305,6 +319,7 @@ class Profile extends ImmutableComponent {
 
 			podium={this.props.podium}
 			activeUser={this.props.activeUser}
+			balance={this.props.balance}
 
 			side={this.props.side}
 

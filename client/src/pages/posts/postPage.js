@@ -1,7 +1,7 @@
 import React from 'react';
 import ImmutableComponent from '../../components/immutableComponent';
 
-import { Set, Map, List } from 'immutable';
+import { OrderedSet, Map, List } from 'immutable';
 
 import Post from './post';
 import PostFeed from './postFeed';
@@ -19,34 +19,32 @@ class PostPage extends ImmutableComponent {
 
 	render() {
 
-		const replies = this.props.replies || Set()
+		const replies = this.props.replies || OrderedSet()
 
 		return (
 			<div className="postpage content">
 
 				{this.props.parent ?
-					<div className="content-row">
-						<Post
+					<Post
 
-							podium={this.props.podium}
-							activeUser={this.props.activeUser}
-							balance={this.props.balance}
+						podium={this.props.podium}
+						activeUser={this.props.activeUser}
+						balance={this.props.balance}
 
-							target={this.props.parent}
-							format="thread"
+						target={this.props.parent}
+						format="thread"
 
-							getUser={this.props.getUser}
-							followUser={this.props.followUser}
-							unfollowUser={this.props.unfollowUser}
+						getUser={this.props.getUser}
+						followUser={this.props.followUser}
+						unfollowUser={this.props.unfollowUser}
 
-							getPost={this.props.getPost}
-							sendPost={this.props.sendPost}
+						getPost={this.props.getPost}
+						sendPost={this.props.sendPost}
 
-							transition={this.props.transition}
-							exit={this.props.exit}
+						transition={this.props.transition}
+						exit={this.props.exit}
 
-						/>
-					</div>
+					/>
 					: null
 				}
 
@@ -78,36 +76,41 @@ class PostPage extends ImmutableComponent {
 					}
 				</div>
 
+				<PostFeed
 
-				<div className="content-row">
-					<PostFeed
+					posts={replies
+						.map(r => Map({ target: r }))
+						.toList()
+						.unshift(Map({
+							marker: true,
+							show: true,
+							type: "custom",
+							value: replies.size > 1 ?
+								`${replies.size} replies` :
+								`${replies.size} reply`
+						}))
+					}
+					from="address"
+					format="card"
+					label={["reply", "replies"]}
 
-						posts={replies
-							.map(r => Map({ target: r }))
-							.toList()
-						}
-						from="address"
-						format="card"
-						label={["reply", "replies"]}
+					podium={this.props.podium}
+					activeUser={this.props.activeUser}
+					balance={this.props.balance}
 
-						podium={this.props.podium}
-						activeUser={this.props.activeUser}
-						balance={this.props.balance}
+					getUser={this.props.getUser}
+					followUser={this.props.followUser}
+					unfollowUser={this.props.unfollowUser}
 
-						getUser={this.props.getUser}
-						followUser={this.props.followUser}
-						unfollowUser={this.props.unfollowUser}
+					getPost={this.props.getPost}
+					sendPost={this.props.sendPost}
 
-						getPost={this.props.getPost}
-						sendPost={this.props.sendPost}
+					transition={this.props.transition}
+					exit={this.props.exit}
 
-						transition={this.props.transition}
-						exit={this.props.exit}
-
-					/>
-				</div>
-				
+				/>
 			</div>
+
 		)
 	}
 

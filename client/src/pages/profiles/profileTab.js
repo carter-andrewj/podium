@@ -13,15 +13,15 @@ class ProfileTab extends ImmutableComponent {
 	immutableComponentWillMount() {
 		this.props.require("profile")
 	}
-	
+
 
 	render() {
 		return !this.props.user ?
 			null :
 			<div
 				className={this.props.profile ?
-					"card profiletab profiletab-loaded" :
-					"card profiletab"
+					"card hover-card profiletab profiletab-loaded" :
+					"card hover-card profiletab"
 				}
 				onClick={() => { if (this.profileLink) {
 					this.props.transition(() => this.profileLink.click())

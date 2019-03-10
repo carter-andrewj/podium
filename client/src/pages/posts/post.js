@@ -68,10 +68,13 @@ class Post extends ImmutableComponent {
 
 
 	shouldImmutableComponentUpdate(nextProps, nextState) {
-		if (!is(this.getState(), nextState)) {
+		if (!is(nextState, this.getState())) {
 			return true
 		}
-		if (this.props.from && this.props.from === "address") {
+		if (nextProps.exit !== this.props.exit) {
+			return true
+		}
+		if (nextProps.from && nextProps.from === "address") {
 			if (this.props.target !== nextProps.target) {
 				return true
 			}

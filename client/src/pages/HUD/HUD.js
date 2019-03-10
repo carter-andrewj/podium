@@ -25,8 +25,8 @@ class _HUD extends ImmutableComponent {
 		return (
 			<div className="master-layout">
 
-				<div className="sidebar sidebar-left">
-					<div className="sidebar-column">
+				<div className="sidebar">
+					<div className="sidebar-column sidebar-left">
 
 						<Fader
 							delayIn={1.0}
@@ -91,8 +91,8 @@ class _HUD extends ImmutableComponent {
 				</div>
 
 
-				<div className="sidebar sidebar-right">
-					<div className="sidebar-column">
+				<div className="sidebar">
+					<div className="sidebar-column sidebar-right">
 
 						<Fader
 							delayIn={1.0}

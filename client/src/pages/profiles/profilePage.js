@@ -29,7 +29,7 @@ class ProfilePage extends ImmutableComponent {
 	}
 
 
-	immutableComponentWillMount() {
+	immutableComponentDidMount() {
 		this.props.require("profile", "posts", "following", "followers")
 		this.props.autoUpdate(true)
 	}
@@ -79,6 +79,7 @@ class ProfilePage extends ImmutableComponent {
 
 						podium={this.props.podium}
 						activeUser={this.props.activeUser}
+						balance={this.props.balance}
 
 						from="address"
 						users={followers}
@@ -102,6 +103,7 @@ class ProfilePage extends ImmutableComponent {
 
 						podium={this.props.podium}
 						activeUser={this.props.activeUser}
+						balance={this.props.balance}
 
 						from="address"
 						users={following}
@@ -207,6 +209,7 @@ class ProfilePage extends ImmutableComponent {
 											{!posts ?
 												<div className="profile-stat-loader">
 													<MiniLoader
+														inline={true}
 														size={0.7}
 														color={mode === "posts" ?
 															"white" :
@@ -231,6 +234,7 @@ class ProfilePage extends ImmutableComponent {
 											{!following ?
 												<div className="profile-stat-loader">
 													<MiniLoader
+														inline={true}
 														size={0.7}
 														color={mode === "following" ?
 															"white" :
@@ -255,6 +259,7 @@ class ProfilePage extends ImmutableComponent {
 											{!followers ?
 												<div className="profile-stat-loader">
 													<MiniLoader
+														inline={true}
 														size={0.7}
 														color={mode === "followers" ?
 															"white" :

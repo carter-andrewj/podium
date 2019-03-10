@@ -774,6 +774,7 @@ class Send extends ImmutableComponent {
 					<PostHeader
 						activeUser={this.props.activeUser}
 						author={this.props.activeUser}
+						off={true}
 					/>
 					{(this.getState("cost") > 0) ?
 						<div className="newpost-cost-holder">

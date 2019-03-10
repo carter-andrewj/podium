@@ -91,7 +91,7 @@ class AlertTab extends ImmutableComponent {
 				time={0.4}
 				show={this.props.show}>
 				<div
-					className="alerttab card"
+					className="alerttab card hover-card"
 					onClick={this.followAlert.bind(this)}>
 
 					<Link

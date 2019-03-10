@@ -6,6 +6,8 @@ import { Map, List, is } from 'immutable';
 
 import AlertTab from './alertTab';
 
+import Slider from '../../components/animators/slider';
+
 
 
 
@@ -16,6 +18,7 @@ class AlertsHUD extends ImmutableComponent {
 	constructor() {
 		super({
 			show: false,
+			quickShow: false,
 			unseen: List(),		// All unseen alerts
 			live: Map(),		// Most recent 3 unseen alerts
 			surfaced: List()	// Keys of all previously surfaced alerts
@@ -97,9 +100,12 @@ class AlertsHUD extends ImmutableComponent {
 
 	quickAlert(key) {
 		this.updateState(
-			state => state.setIn(["live", key, "show"], true),
+			state => state
+				.setIn(["live", key, "show"], true)
+				.set("quickShow", true),
 			() => setTimeout(
 				() => this.updateState(state => state
+					.set("quickShow", false)
 					.setIn(["live", key, "show"], false)
 					.update("surfaced", s => s.push(key))
 				),
@@ -131,7 +137,9 @@ class AlertsHUD extends ImmutableComponent {
 							"alerts-button alerts-button-on card" :
 							"alerts-button alerts-button-off card"
 						}
-						onClick={() => this.fullAlerts.click()}>
+						onClick={() => this.props.transition(
+							() => this.fullAlerts.click()
+						)}>
 						<i className="fas fa-bell alerts-icon" />
 						{show ?
 							<div className="alerts-caption alerts-caption-on">
@@ -187,17 +195,23 @@ class AlertsHUD extends ImmutableComponent {
 								/>)
 								.toList()
 							}
-							{(this.getState("unseen")
-									.filter(a => a.get("show")).size > 3) ?
+							<Slider
+								offset={{ x: -18, y: 0 }}
+								time={0.4}
+								delayIn={0.4}
+								show={this.getState("unseen").size > 3 &&
+									(this.getState("quickShow") || this.getState("show"))}
+								exit={this.props.exit}>
 								<div
 									className="quickalerts-footer card"
-									onClick={() => this.fullAlerts.click()}>
+									onClick={() => this.props.transition(
+										() => this.fullAlerts.click()
+									)}>
 									<p className="quickalerts-footer-text">
 										{`...and ${this.getState("unseen").size - 3} more`}
 									</p>
 								</div>
-								: null
-							}
+							</Slider>
 						</div>
 						: null
 					}

@@ -6,7 +6,10 @@ class Loader extends ImmutableComponent {
 
 	render() {
 		return (
-			<div className="miniloader">
+			<div className={this.props.inline ?
+					"miniloader" :
+					"miniloader miniloader-boxed"
+				}>
 				<div
 					style={{
 						transform: `scale(${this.props.size || 1.0})`,

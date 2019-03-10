@@ -15,15 +15,52 @@ class Lobby extends ImmutableComponent {
 		return (
 			<div className="lobby content">
 
+				<Fader
+					delayIn={1.2}
+					exit={this.props.exit}>
+					<div className="demo-label">
+						LIVE ALPHA
+					</div>
+					<div className="demo-disclaimer">
+						This early, incomplete version of the
+						Podium social network is under active development.<br/>
+						As such, you may experience bugs and errors. We recommend
+						using Chrome on a desktop machine to minimize this risk.<br/>
+						A list of known bugs can be found{" "}
+						<Link to="/bugs/">here</Link>
+						{" "}and we greatly appreciate new ones being reported to{" "}
+						<a href="mailto:bugs@podium-network.com">
+							bugs@podium-network.com
+						</a>.
+					</div>
+				</Fader>
 				
 				<Fader
 					timeIn={1.5}
 					exit={this.props.exit}>
-					<img
-						className="lobby-image"
-						src="./images/title-logo.png"
-						alt=""
-					/>
+					<div className="lobby-image">
+						<div className="lobby-image-top">
+							<img
+								className="lobby-logo-compass"
+								src="./images/compass.png"
+								alt=""
+							/>
+							<div className="lobby-icon-holder">
+								<img
+									className="lobby-logo-icon"
+									src="./images/icon.png"
+									alt=""
+								/>
+							</div>
+						</div>
+						<div className="lobby-image-bottom">
+							<img
+								className="lobby-logo-text"
+								src="./images/logotext-white.png"
+								alt=""
+							/>
+						</div>
+					</div>
 				</Fader>
 
 				<Slider

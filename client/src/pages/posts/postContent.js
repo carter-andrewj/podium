@@ -29,11 +29,13 @@ class PostContent extends ImmutableComponent {
 			reference: null,
 			referenceType: null,
 			refTimer: null,
-			links: Map(),
 
 			lock: false,
 			reply: false,
-			highlight: false
+			highlight: false,
+
+			link: "post",
+			linkMap: Map()
 
 		})
 
@@ -44,9 +46,14 @@ class PostContent extends ImmutableComponent {
 		this.showReply = this.showReply.bind(this)
 		this.hideReply = this.hideReply.bind(this)
 
-		this.makeLink = this.makeLink.bind(this)
-		this.toLink = this.toLink.bind(this)
-		this.externalLink = this.externalLink.bind(this)
+		this.showReference = this.showReference.bind(this)
+		this.hideReference = this.hideReference.bind(this)
+		this.lockReference = this.lockReference.bind(this)
+		this.unlockReference = this.unlockReference.bind(this)
+
+		this.refLink = this.refLink.bind(this)
+		this.setLink = this.setLink.bind(this)
+		this.goLink = this.goLink.bind(this)
 
 	}
 
@@ -118,6 +125,32 @@ class PostContent extends ImmutableComponent {
 		} else {
 			return new Promise(async (resolve, reject) => {
 
+				// Get post data
+				const post = this.props.post
+				const parent = this.props.parent
+				const author = this.props.author
+				const postID = this.props.post.address
+
+				// Build basic links
+				var linkMap = fromJS({
+					post: {
+						to: `/post/${post.address}`,
+						external: false
+					}
+				})
+				if (parent) {
+					linkMap = linkMap.set("parent", Map({
+						to: `/post/${parent.address}`,
+						external: false
+					}))
+				}
+				if (author) {
+					linkMap = linkMap.set("author", Map({
+						to: `/user/${author.id}`,
+						external: false
+					}))
+				}
+
 				// Load post references
 				const references = this.props.mentions || Set()
 				const only = fromJS(references)
@@ -129,111 +162,96 @@ class PostContent extends ImmutableComponent {
 				//		 alone would create an edge case for topics
 				//		 and users with the same ID.
 
-				// Markup raw post string
-				const post = this.props.post
-				const postID = this.props.post.address
-				const content = markupPost(post.text || "", undefined, only)
+				// Build content
+				const content = List(markupPost(post.text || "", undefined, only))
+					.groupBy(p => p.line)
+					.map((line, l) => <p key={`${postID}-l${l}`} className="post-line">
+						{line.map((p, w) => {
 
-				// Count lines in output
-				const lineNum = content.reduce((x, p) => Math.max(x, p.line), 0) + 1;
+							// Create word ID
+							const wordID = postID + "-" + l + "-" + w;
 
-				// Build each line
-				var lines = []
-				for (let l = 0; l < lineNum; l++) {
+							// Handle word type
+							let word;
+							switch (p.type) {
 
-					// Build line
-					const words = content.filter(p => p.line === l).map((p, w) => {
+								// Links
+								case ("link"):
+									linkMap = linkMap.set(p.reference, Map({
+										to: p.reference,
+										external: true
+									}))
+									word = <span
+										key={wordID}
+										onMouseOver={() => this.setLink(p.reference)}
+										onMouseOut={() => this.setLink("post")}
+										onMouseEnter={() => this.showReference("url", p.reference)}
+										onMouseLeave={() => this.hideReference("url", p.reference)}
+										className="post-word post-link">
+										{p.word}
+									</span>
+									break;
 
-						// Create word ID
-						const wordID = postID + "-" + l + "-" + w;
+								// Mentions
+								case ("mention"):
+									linkMap = linkMap.set(p.reference, Map({
+										to: `/user/${p.reference}`,
+										external: false
+									}))
+									word = <span
+										key={wordID}
+										onMouseOver={() => this.setLink(p.reference)}
+										onMouseOut={() => this.setLink("post")}
+										onMouseEnter={() => this.showReference("user", p.reference)}
+										onMouseLeave={() => this.hideReference("user", p.reference)}
+										className="post-word post-mention">
+										{p.word}
+									</span>
+									break;
 
-						//TODO - Handle edge-case with a post containing
-						//		 2 references to the same entity. In this
-						//		 case, there will currently be links and
-						//		 elements with duplicate keys.
+								// Topics
+								case ("topic"):
+									linkMap = linkMap.set(p.reference, Map({
+										to: `/topic/${p.reference}`,
+										external: false
+									}))
+									word = <span
+										key={wordID}
+										onMouseOver={() => this.setLink(p.reference)}
+										onMouseOut={() => this.setLink("post")}
+										onMouseEnter={() => this.showReference("topic", p.reference)}
+										onMouseLeave={() => this.hideReference("topic", p.reference)}
+										className="post-word post-topic">
+										{p.word}
+									</span>
+									break;
 
-						// Handle word type
-						let word;
-						switch (p.type) {
+								//TODO - Media
 
-							// Links
-							case ("link"):
-								word = <span
-									key={wordID}
-									className="post-word post-link"
-									onMouseEnter={() => this.showReference("url", p.reference)}
-									onMouseLeave={() => this.hideReference()}
-									onClick={event => this.externalLink(event, p.reference)}>
-									{p.word}
-								</span>
-								break;
+								// Otherwise, return the word alone
+								default:
+									word = <span
+										key={wordID}
+										className="post-word">
+										{p.word}
+									</span>
 
-							// Mentions
-							case ("mention"):
-								word = <span
-									key={wordID}
-									onMouseEnter={() => this.showReference("user", p.reference)}
-									onMouseLeave={() => this.hideReference()}
-									onClick={event => this.toLink(event, p.reference)}
-									className="post-word post-mention">
-									<Link
-										to={`/user/${p.reference}`}
-										innerRef={ref => this.makeLink(p.reference, ref)}
-										style={{ display: "none" }}
-									/>
-									{p.word}
-								</span>
-								break;
+							}
 
-							// Topics
-							case ("topic"):
-								word = <span
-									key={wordID}
-									onMouseEnter={() => this.showReference("topic", p.reference)}
-									onMouseLeave={() => this.hideReference()}
-									onClick={event => this.toLink(event, p.reference)}
-									className="post-word post-topic">
-									<Link
-										to={`/topic/${p.reference}`}
-										innerRef={ref => this.makeLink(p.reference, ref)}
-										style={{ display: "none" }}
-									/>
-									{p.word}
-								</span>
-								break;
+							return word;
 
-							//TODO - Media
-
-							// Otherwise, return the word alone
-							default:
-								word = <span
-									key={wordID}
-									className="post-word">
-									{p.word}
-								</span>
-
-						}
-
-						return word;
-
-					});
-
-					// Add line to output
-					lines.push(<p
-						key={postID + "-" + l}
-						className="post-line">
-						{words}
+						}).toList()}
 					</p>)
-
-				}
+					.toList()
 
 				// Wrap and store result
-				this.updateState(
-					state => state.set("content",
+				this.updateState(state => state
+					.set("content",
 						<div className="post-content">
-							{lines}
+							{content}
 						</div>
-					),
+					)
+					.set("linkMap", linkMap),
 					resolve
 				)
 
@@ -243,55 +261,85 @@ class PostContent extends ImmutableComponent {
 
 
 
-// REFERENCES
+// LINKS
 
-	makeLink(id, ref) {
-		this.updateState(state => state
-			.update("links", l => l.set(id, ref))
-		)
-	}
-
-
-	toLink(event, id) {
-		if (event) { event.stopPropagation() }
-		this.props.transition(
-			() => this.getState("links", id).click()
-		)
-	}
-
-
-	externalLink(event, url) {
-		event.stopPropagation()
-		window.open(url, "_blank")
-	}
-
-
-	showReference(type, reference) {
-
-		// Stop timeout
-		clearTimeout(this.getState("refTimer"))
-
-		// Switch to new reference, if required
-		if (reference !== this.getState("reference")) {
+	refLink(id, ref) {
+		if (!this.getState("linkMap", id, "ref")) {
 			this.updateState(state => state
-				.set("reference", reference)
-				.set("referenceType", type)
+				.setIn(["linkMap", id, "ref"], ref)
 			)
 		}
+	}
 
+	setLink(id) {
+		this.updateState(state => state.set("link", id))
+	}
+
+	goLink() {
+		const link = this.getState("linkMap", this.getState("link"))
+		if (link) {
+			if (link.get("external")) {
+				window.open(link.get("to"), "_blank")
+			} else if (link.get("ref")) {
+				this.props.transition(
+					() => link.get("ref").click()
+				)
+			}
+		}
 	}
 
 
-	hideReference() {
-		clearTimeout(this.getState("refTimer"))
-		this.updateState(state => state
-			.set("refTimer", setTimeout(
+
+
+// REFERENCES
+
+	showReference(type, reference) {
+		clearTimeout(this.entryTimer)
+		this.entryTimer = setTimeout(
+			() => {
+
+				// Stop vanish timeout
+				clearTimeout(this.exitTimer)
+
+				// Switch to new reference, if required
+				if (reference !== this.getState("reference")) {
+					this.updateState(state => state
+						.set("reference", reference)
+						.set("referenceType", type)
+					)
+				}
+
+			},
+			300
+		)
+	}
+
+
+	hideReference(type, reference) {
+		clearTimeout(this.entryTimer)
+		if (type === this.getState("referenceType") &&
+				reference === this.getState("reference")) {
+			clearTimeout(this.exitTimer)
+			this.exitTimer = setTimeout(
 				() => this.updateState(state => state
 					.set("reference", null)
 					.set("referenceType", null)
 				),
 				1000
-			))
+			)
+		}
+	}
+
+
+	lockReference() {
+		clearTimeout(this.exitTimer)
+	}
+
+
+	unlockReference() {
+		this.hideReference(
+			this.getState("referenceType"),
+			this.getState("reference")
 		)
 	}
 
@@ -320,62 +368,36 @@ class PostContent extends ImmutableComponent {
 				<div
 					key={`${post.address}-labels-reply`}
 					className="post-label post-label-reply"
-					onClick={() => this.parentLink.click()}>
+					onMouseOver={() => this.setLink("parent")}
+					onMouseOut={() => this.setLink("post")}>
 					{this.props.parentAuthor && this.props.parent ?
 						<p className="post-label-text">
-							<Link
-								to={`/post/${this.props.parent.address}`}
-								innerRef={ref => this.parentLink = ref}
-								style={{ display: "none" }}
-							/>
 							<i className="fas fa-reply post-label-icon" />
 							{`Replying to @${this.props.parentAuthor.id}`}
 						</p>
-						: null
+						:
+						<p className="post-label-text">
+							<i className="fas fa-reply post-label-icon" />
+							{`Replying`}
+						</p>
 					}
 				</div>
 			)
 		}
 		
-		return (
+		return <div>
+
+			{this.getState("linkMap")
+				.map((l, id) => <Link
+					key={`link-to-${id}`}
+					to={l.get("to")}
+					innerRef={ref => this.refLink(id, ref)}
+					style={{ display: "none" }}
+				/>)
+				.toList()
+			}
+
 			<div className={first ? "post post-first" : "post"}>
-
-				{post ?
-					<Link
-						to={`/post/${post.address}`}
-						innerRef={ref => this.postLink = ref}
-						style={{ display: "none" }}
-					/>
-					: null
-				}
-
-				{reference ?
-					<div
-						className="post-tooltip-holder"
-						onMouseEnter={() => this.showReference()}
-						onMouseLeave={() => this.hideReference()}>
-						<Profile
-
-							key={`tooltip-${this.props.post.address}-${reference}`}
-
-							podium={this.props.podium}
-							activeUser={this.props.activeUser}
-
-							from="id"
-							target={reference}
-							
-							getUser={this.props.getUser}
-
-							followUser={this.props.followUser}
-							unfollowUser={this.props.unfollowUser}
-
-							format="tooltip"
-							side="left"
-
-						/>
-					</div>
-					: null
-				}
 
 				<div
 					className={first ?
@@ -384,16 +406,52 @@ class PostContent extends ImmutableComponent {
 					}
 					onMouseEnter={this.highlight.bind(this)}
 					onMouseLeave={this.unlight.bind(this)}
-					onClick={this.postLink ?
-						() => this.postLink.click()
+					onClick={this.goLink.bind(this)}>
+
+					{reference ?
+						<div
+							className="post-tooltip-holder"
+							onMouseOver={() => this.setLink(reference)}
+							onMouseOut={() => this.setLink("post")}
+							onMouseEnter={this.lockReference.bind(this)}
+							onMouseLeave={this.unlockReference.bind(this)}>
+							<Profile
+
+								key={`tooltip-${this.props.post.address}-${reference}`}
+
+								podium={this.props.podium}
+								activeUser={this.props.activeUser}
+
+								from="id"
+								target={reference}
+								
+								getUser={this.props.getUser}
+
+								followUser={this.props.followUser}
+								unfollowUser={this.props.unfollowUser}
+
+								format="tooltip"
+								side="left"
+
+							/>
+						</div>
 						: null
-					}>
+					}
 
 					<PostHeader
+
 						first={first}
+
 						activeUser={this.props.activeUser}
+
 						author={this.props.author}
-						post={post}>
+						post={post}
+
+						showReference={this.showReference}
+						hideReference={this.hideReference}
+						setLink={this.setLink}
+
+						transition={this.props.transition}>
 
 						{labels}
 
@@ -414,10 +472,11 @@ class PostContent extends ImmutableComponent {
 										highlight={highlight ? "var(--green)" : null}
 										off={promos.size === 0}
 										transparent={true}
-										onClick={() => console.log("promote view")}>
+										onClick={() => console.log("view promotions")}>
 										{!promos ?
 											<div className="button-loader">
 												<MiniLoader
+													inline={true}
 													size={0.6}
 													color={highlight ? "var(--dark-grey)" : "var(--grey)"}
 												/>
@@ -460,6 +519,7 @@ class PostContent extends ImmutableComponent {
 										{!sanctions ?
 											<div className="button-loader">
 												<MiniLoader
+													inline={true}
 													size={0.6}
 													color={highlight ? "var(--dark-grey)" : "var(--grey)"}
 												/>
@@ -497,11 +557,11 @@ class PostContent extends ImmutableComponent {
 										color={highlight ? "var(--dark-grey)" : "var(--grey)"}
 										highlight={highlight ? "var(--green)" : null}
 										transparent={true}
-										off={replies.size === 0}
-										onClick={() => this.postLink.click()}>
+										off={replies.size === 0}>
 										{!this.props.replies ?
 											<div className="button-loader">
 												<MiniLoader
+													inline={true}
 													size={0.6}
 													color={highlight ? "var(--dark-grey)" : "var(--grey)"}
 												/>
@@ -577,7 +637,8 @@ class PostContent extends ImmutableComponent {
 				}
 
 			</div>
-		)
+		
+		</div>
 
 	}
 

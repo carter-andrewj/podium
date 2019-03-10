@@ -147,12 +147,19 @@ class App extends ImmutableComponent {
 
 	immutableComponentWillMount() {
 
+		// Set server url
+		let serverURL;
+		if (Config.mode === "dev") {
+			serverURL = "http://localhost:3000"
+		} else {
+			serverURL = "https://api.podium-network.com"
+		}
+
 		// Get local config in dev mode
 		new PodiumClient()
-			.connect({ ServerURL: "http://localhost:3000" })
-		//	.connect({ ServerURL: "https://api.podium-network.com"})
+			.connect({ ServerURL: serverURL })
 			.then(podium => {
-				//podium.setDebug(true)
+				podium.setDebug(Config.debug)
 				this.updateState(state => state
 					.set("podium", podium)
 				)
@@ -535,7 +542,7 @@ class App extends ImmutableComponent {
 					if (posts.size > 0) {
 						this.updateState(state => state.updateIn(
 							["feed", "published"],
-							p => p.union(posts.rest().toSet())
+							p => p.union(posts.rest())
 						))
 						return this.buildPost(posts.first())
 					} else {
@@ -1290,11 +1297,22 @@ class App extends ImmutableComponent {
 		return <div ref="podium" className="app podium">
 
 			<div className="backdrop" />
-			<div className={this.ready ?
-				"master-loading-mask master-loading-mask-off" :
-				"master-loading-mask master-loading-mask-on"} />
+			<div
+				style={{
+					pointerEvents: "none",
+					position: "absolute",
+					zIndex: 999999,
+					background: "#e9ebe7",
+					left: 0,
+					right: 0,
+					top: 0,
+					bottom: 0,
+					opacity: 1
+				}}
+				className="master-loading-mask-off"
+			/>
 
-			{!this.getState("podium") ?
+			{!this.getState("podium") || !this.mounted ?
 
 				<Loader /> :
 
@@ -1353,7 +1371,7 @@ class App extends ImmutableComponent {
 						</Switch>
 						{demoMenu}
 						<div
-							className="red-button demo-button card"
+							className="demo-button card"
 							onClick={this.toggleDemoMenu.bind(this)}>
 							<p className="demo-button-text">demo</p>
 							{this.getState("demomenu") ?

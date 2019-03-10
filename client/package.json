@@ -1,10 +1,10 @@
 {
   "name": "podium-client",
-  "homepage": "http://demp.podium-network.com/",
+  "homepage": "http://podium-network.com/",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@carter_andrewj/podix": "^2.6.19",
+    "@carter_andrewj/podix": "^2.6.21",
     "ajv": "^6.9.1",
     "immutable": "^4.0.0-rc.12",
     "radixdlt": "^1.0.6-alpha",
@@ -19,7 +19,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "deploy": "aws s3 sync ./build s3://demo.podium-network.com/",
+    "deploy": "aws s3 sync ./build s3://podium-network.com/",
     "build-and-deploy": "npm run build && npm run deploy",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject"

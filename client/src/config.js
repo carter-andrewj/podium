@@ -1,5 +1,7 @@
 const Config = {
 
+	debug: false,
+
 	colors: {
 		black: "#000",
 		white: "#fff",
@@ -18,6 +20,11 @@ const Config = {
 
 	timings: {
 		transition: 0.3
+	},
+
+	feed: {
+		startLength: 10,
+		stepLength: 5
 	}
 
 }

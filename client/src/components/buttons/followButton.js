@@ -93,49 +93,55 @@ class FollowButton extends ImmutableComponent {
 
 	render() {
 
+		const me = this.props.activeUser && this.props.targetUser &&
+			this.props.activeUser.address === this.props.targetUser.address
 		const ready = !(this.getState("following") === undefined)
 		const following = this.getState("following")
 		const loading = this.getState("loading")
 
 		return (!this.props.activeUser || !this.props.targetUser) ?
-			null :
-			<Button
+			null : me ?
+				<div className="you-marker">
+					you
+				</div>
+				:
+				<Button
 
-				caption={!ready ?
-					null :
-					loading ?
-						(following ? "unfollowing..." : "following...") :
-						(following ? "unfollow" : "follow")
-				}
-				captionLocation={this.props.captionLocation}
-				captionOffset={this.props.captionOffset}
+					caption={!ready ?
+						null :
+						loading ?
+							(following ? "unfollowing..." : "following...") :
+							(following ? "unfollow" : "follow")
+					}
+					captionLocation={this.props.captionLocation}
+					captionOffset={this.props.captionOffset}
 
-				size={this.props.size}
-				color={ready ? "var(--green)" : "var(--dark-grey)"}
-				transparent={!following}
-				filled={following}
+					size={this.props.size}
+					color={ready ? "var(--green)" : "var(--dark-grey)"}
+					transparent={!following}
+					filled={following}
 
-				disabled={!ready}
-				onClick={(!ready || loading) ?
-					null :
-					following ?
-						this.unfollow.bind(this) :
-						this.follow.bind(this)
-				}
+					disabled={!ready}
+					onClick={(!ready || loading) ?
+						null :
+						following ?
+							this.unfollow.bind(this) :
+							this.follow.bind(this)
+					}
 
-				children={(!ready || loading) ?
-					<div className="button-loader">
-						<MiniLoader size={0.7} />
-					</div>
-					:
-					<i className="fas fa-eye button-icon" />
-				}
-				childrenHighlight={following ?
-					<i className="fas fa-eye-slash button-icon" />
-					: null
-				}
+					children={(!ready || loading) ?
+						<div className="button-loader">
+							<MiniLoader size={0.7} />
+						</div>
+						:
+						<i className="fas fa-eye button-icon" />
+					}
+					childrenHighlight={following ?
+						<i className="fas fa-eye-slash button-icon" />
+						: null
+					}
 
-			/>
+				/>
 	}
 }
 

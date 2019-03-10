@@ -95,7 +95,7 @@ class Slider extends ImmutableComponent {
 				className="slider"
 				style={this.getState("ready") ?
 					(show ? this.getState("on") : this.getState("off"))
-					: { visibility: "hidden" }
+					: { opacity: 0 }
 				}>
 				<div className={active ?
 						"slider-children anim-ignore" :

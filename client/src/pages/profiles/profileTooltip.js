@@ -16,7 +16,7 @@ class ProfileTooltip extends ImmutableComponent {
 	//TODO - Add bio on mouseover
 
 	render() {
-		return <div className="profiletip card">
+		return <div className="profiletip card hover-card">
 
 			<div className="profiletip-picture-holder">
 				{this.props.profile ?

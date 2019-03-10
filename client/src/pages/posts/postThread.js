@@ -54,7 +54,7 @@ class PostThread extends ImmutableComponent {
 			null :
 			<div className="thread-holder">
 				<Expander time={1.0}>
-					<div className="thread-card card">
+					<div className="thread-card card hover-card">
 
 						{thread
 							.map((post, i) => {

@@ -98,10 +98,7 @@ class SearchPage extends ImmutableComponent {
 							followUser={this.props.followUser}
 							unfollowUser={this.props.unfollowUser}
 
-							footer={this.props.results.size > 0 ?
-								"no more results"
-								: null
-							}
+							label={["result", "results"]}
 
 						/>
 					</Fader>

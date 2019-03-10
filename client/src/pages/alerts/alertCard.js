@@ -6,6 +6,7 @@ import { Map } from 'immutable';
 
 import { timeform } from 'utils';
 
+import Expander from '../../components/animators/expander';
 import MiniLoader from '../../components/miniLoader';
 
 
@@ -125,15 +126,15 @@ class AlertCard extends ImmutableComponent {
 	render() {
 		const profile = this.getState("profile")
 		const seen = this.props.alert.get("seen")
-		return (
+		return <Expander time={1.0}>
 			<div
 				className={seen ?
-					"alertcard card alertcard-old" :
-					"alertcard card alertcard-new"
+					"alertcard card hover-card alertcard-old" :
+					"alertcard card hover-card alertcard-new"
 				}
-				onClick={() => {
-					if (this.alertLink) { this.alertLink.click() }
-				}}>
+				onClick={() => this.props.transition(
+					() => this.alertLink ? this.alertLink.click() : null
+				)}>
 
 				{profile ?
 					<Link
@@ -152,7 +153,7 @@ class AlertCard extends ImmutableComponent {
 				</div>
 
 				<div className="alertcard-picture-holder">
-					{profile ?
+					{profile && false ?
 						<img
 							className="alertcard-picture"
 							src={this.getState("profile", "pictureURL")}
@@ -181,7 +182,7 @@ class AlertCard extends ImmutableComponent {
 				</div>
 
 			</div>
-		)
+		</Expander>
 
 	}
 

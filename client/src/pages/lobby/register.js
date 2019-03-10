@@ -457,6 +457,7 @@ class Register extends ImmutableComponent {
 
 
 	show() {
+		this.props.hideHome()
 		clearTimeout(timer)
 		timer = setTimeout(
 			() => {
@@ -470,7 +471,10 @@ class Register extends ImmutableComponent {
 
 	hide() {
 		clearTimeout(timer)
-		this.updateState(state => state.set("show", false))
+		this.updateState(
+			state => state.set("show", false),
+			this.props.showHome
+		)
 	}
 
 

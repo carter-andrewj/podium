@@ -9,20 +9,56 @@ import MiniLoader from '../../components/miniLoader';
 
 class PostHeader extends ImmutableComponent {
 
+	constructor() {
+		super({
+			highlight: false
+		})
+		this.activate = this.activate.bind(this)
+		this.deactivate = this.deactivate.bind(this)
+	}
+
+	activate() {
+		this.updateState(
+			state => state.set("highlight", true),
+			() => {
+				this.props.setLink("author")
+				this.props.showReference("user", this.props.author.id)
+			}
+		)
+	}
+
+	deactivate() {
+		this.updateState(
+			state => state.set("highlight", false),
+			() => {
+				this.props.setLink("post")
+				this.props.hideReference("user", this.props.author.id)
+			}
+		)
+	}
+
+
 	render() {
+		const post = this.props.post
+		const author = this.props.author
+		const reactive = post && author && !this.props.off
+		const highlight = this.getState("highlight")
 		return (
 			<div className="post-header">
-				<div className={this.props.first ?
+				<div 
+					onMouseOver={reactive ? () => this.activate() : null}
+					onMouseOut={reactive ? () => this.deactivate() : null}
+					className={this.props.first ?
 						"post-header-picture-holder post-header-picture-first" :
 						"post-header-picture-holder"
 					}>
-					{this.props.author ?
+					{author ?
 						<img
 							className={this.props.first ?
 								"post-header-picture post-header-picture-first" :
 								"post-header-picture"
 							}
-							src={this.props.author.picture}
+							src={author.picture}
 							alt=""
 						/>
 						:
@@ -31,14 +67,25 @@ class PostHeader extends ImmutableComponent {
 						</div>
 					}
 				</div>
-				<div className="post-title-holder">
-					{this.props.author ?
+				<div
+					onMouseOver={reactive ? () => this.activate() : null}
+					onMouseOut={reactive ? () => this.deactivate() : null}
+					className={reactive ?
+						"post-title-holder post-title-holder-active" :
+						"post-title-holder"
+					}>
+					{author ?
 						<p className="post-title">
-							<span className="post-title-name">{this.props.author.name}</span>
+							<span className={highlight ?
+									"post-title-name post-title-name-on" :
+									"post-title-name"
+								}>
+								{author.name}
+							</span>
 							<span className="post-title-id">
-								{`@${this.props.author.id}` +
-									(this.props.post ?
-										`\u2000\u2022\u2000${timeform(this.props.post.created)}`
+								{`@${author.id}` +
+									(post ?
+										`\u2000\u2022\u2000${timeform(post.created)}`
 										: ""
 									)
 								}

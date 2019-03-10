@@ -22,7 +22,9 @@ class WalletHUD extends ImmutableComponent {
 
 				<div
 					className="wallet-button card"
-					onClick={() => this.goToWallet.click()}>
+					onClick={() => this.props.transition(
+						() => this.goToWallet.click()
+					)}>
 					<div className="wallet-token-holder">
 						<img
 							className="wallet-token-icon"

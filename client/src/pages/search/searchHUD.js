@@ -114,7 +114,7 @@ class SearchHUD extends ImmutableComponent {
 		} else {
 			this.search(true)
 			this.emptySearch()
-			this.fullSearch.click()
+			this.props.transition(() => this.fullSearch.click())
 		}			
 	} 
 
